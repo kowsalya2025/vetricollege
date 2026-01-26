@@ -16,10 +16,14 @@ if env_path.exists():
 # See https://docs.djangoproject.com/en/6.0/howto/deployment/checklist/
 
 # SECURITY WARNING: keep the secret key used in production secret!
-SECRET_KEY = os.getenv("DJANGO_SECRET_KEY")
 
-if not SECRET_KEY:
-    raise RuntimeError("DJANGO_SECRET_KEY is not set")
+DJANGO_SECRET_KEY='django-insecure-l!2jv%k&ogob=b1a)93y(q0h$8$#csjiwikt=oq0y!g!c*&w+l'
+
+
+# SECRET_KEY = os.getenv("DJANGO_SECRET_KEY")
+
+# if not SECRET_KEY:
+#     raise RuntimeError("DJANGO_SECRET_KEY is not set")
 
 
 
