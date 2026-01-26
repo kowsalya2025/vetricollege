@@ -150,44 +150,91 @@
     .actions {
         text-align: center;
         margin-top: 2rem;
+        display: flex;
+        gap: 1rem;
+        justify-content: center;
+        flex-wrap: wrap;
+    }
+
+    .btn-download,
+    .btn-share,
+    .btn-back {
+        color: white;
+        padding: 1rem 2.5rem;
+        border-radius: 8px;
+        text-decoration: none;
+        display: inline-flex;
+        align-items: center;
+        gap: 0.5rem;
+        transition: all 0.3s ease;
+        font-weight: 500;
+        border: none;
+        cursor: pointer;
     }
 
     .btn-download {
         background: #22c55e;
-        color: white;
-        padding: 1rem 3rem;
-        border-radius: 8px;
-        text-decoration: none;
-        display: inline-block;
-        margin: 0 0.5rem;
-        transition: all 0.3s ease;
-        font-weight: 500;
     }
 
     .btn-download:hover {
         background: #16a34a;
-        transform: scale(1.05);
+        transform: translateY(-2px);
+        box-shadow: 0 4px 12px rgba(34, 197, 94, 0.3);
+    }
+
+    .btn-share {
+        background: #3b82f6;
+    }
+
+    .btn-share:hover {
+        background: #2563eb;
+        transform: translateY(-2px);
+        box-shadow: 0 4px 12px rgba(59, 130, 246, 0.3);
     }
 
     .btn-back {
         background: #6b7280;
-        color: white;
-        padding: 1rem 3rem;
-        border-radius: 8px;
-        text-decoration: none;
-        display: inline-block;
-        margin: 0 0.5rem;
-        transition: all 0.3s ease;
-        font-weight: 500;
     }
 
     .btn-back:hover {
         background: #4b5563;
+        transform: translateY(-2px);
+    }
+
+    /* Loading spinner for download */
+    .btn-download.loading {
+        pointer-events: none;
+        opacity: 0.7;
+    }
+
+    .btn-download.loading::after {
+        content: '';
+        width: 16px;
+        height: 16px;
+        border: 2px solid #fff;
+        border-top-color: transparent;
+        border-radius: 50%;
+        display: inline-block;
+        animation: spin 0.6s linear infinite;
+        margin-left: 0.5rem;
+    }
+
+    @keyframes spin {
+        to { transform: rotate(360deg); }
     }
 
     @media print {
         .actions {
             display: none;
+        }
+        
+        body {
+            background: white;
+        }
+        
+        .certificate-container {
+            margin: 0;
+            padding: 0;
         }
     }
 
@@ -207,6 +254,22 @@
         .certificate-footer {
             flex-direction: column;
             gap: 2rem;
+        }
+        
+        .actions {
+            flex-direction: column;
+        }
+        
+        .btn-download,
+        .btn-share,
+        .btn-back {
+            width: 100%;
+            justify-content: center;
+        }
+
+        .meta-item {
+            display: block;
+            margin: 0.5rem 0;
         }
     }
 </style>
@@ -258,12 +321,68 @@
     </div>
 
     <div class="actions">
-        <a href="{% url 'download_certificate' certificate.certificate_id %}" class="btn-download">
-            <i class="fas fa-download"></i> Download Certificate
+        <a href="{% url 'download_certificate' certificate.certificate_id %}" 
+           class="btn-download" 
+           id="downloadBtn">
+            <i class="fas fa-download"></i> 
+            <span>Download PDF</span>
         </a>
+        
+        <button class="btn-share" onclick="shareCertificate()">
+            <i class="fas fa-share-alt"></i> 
+            <span>Share</span>
+        </button>
+        
         <a href="{% url 'my_achievements' %}" class="btn-back">
-            <i class="fas fa-arrow-left"></i> Back to Achievements
+            <i class="fas fa-arrow-left"></i> 
+            <span>Back to Achievements</span>
         </a>
     </div>
 </div>
+
+<script>
+    // Add loading state to download button
+    document.getElementById('downloadBtn').addEventListener('click', function(e) {
+        this.classList.add('loading');
+        this.querySelector('span').textContent = 'Generating PDF...';
+        
+        // Remove loading state after download starts (3 seconds)
+        setTimeout(() => {
+            this.classList.remove('loading');
+            this.querySelector('span').textContent = 'Download PDF';
+        }, 3000);
+    });
+
+    // Share certificate function
+    function shareCertificate() {
+        const certificateUrl = window.location.href;
+        const certificateTitle = "{{ certificate.course.title }}";
+        const shareText = `I've completed ${certificateTitle} and earned a certificate!`;
+        
+        // Check if Web Share API is supported
+        if (navigator.share) {
+            navigator.share({
+                title: 'Certificate of Completion',
+                text: shareText,
+                url: certificateUrl
+            }).catch(err => {
+                if (err.name !== 'AbortError') {
+                    fallbackShare(certificateUrl);
+                }
+            });
+        } else {
+            fallbackShare(certificateUrl);
+        }
+    }
+    
+    // Fallback share method (copy to clipboard)
+    function fallbackShare(url) {
+        navigator.clipboard.writeText(url).then(() => {
+            alert('Certificate link copied to clipboard!');
+        }).catch(() => {
+            // If clipboard API fails, show prompt
+            prompt('Copy this link:', url);
+        });
+    }
+</script>
 {% endblock %}

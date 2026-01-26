@@ -1,9 +1,11 @@
-{% extends 'lms/base.html' %}
-{% load static %}
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Course Certificate</title>
+    
 
-{% block title %}Certificate - {{ certificate.course.title }}{% endblock %}
-
-{% block extra_css %}
 <style>
     .certificate-container {
         max-width: 900px;
@@ -273,9 +275,8 @@
         }
     }
 </style>
-{% endblock %}
-
-{% block content %}
+</head>
+<body>
 <div class="certificate-container">
     <div class="certificate">
         <div class="certificate-header">
@@ -320,69 +321,8 @@
         </div>
     </div>
 
-    <div class="actions">
-        <a href="{% url 'download_certificate' certificate.certificate_id %}" 
-           class="btn-download" 
-           id="downloadBtn">
-            <i class="fas fa-download"></i> 
-            <span>Download PDF</span>
-        </a>
-        
-        <button class="btn-share" onclick="shareCertificate()">
-            <i class="fas fa-share-alt"></i> 
-            <span>Share</span>
-        </button>
-        
-        <a href="{% url 'my_achievements' %}" class="btn-back">
-            <i class="fas fa-arrow-left"></i> 
-            <span>Back to Achievements</span>
-        </a>
-    </div>
+ 
 </div>
 
-<script>
-    // Add loading state to download button
-    document.getElementById('downloadBtn').addEventListener('click', function(e) {
-        this.classList.add('loading');
-        this.querySelector('span').textContent = 'Generating PDF...';
-        
-        // Remove loading state after download starts (3 seconds)
-        setTimeout(() => {
-            this.classList.remove('loading');
-            this.querySelector('span').textContent = 'Download PDF';
-        }, 3000);
-    });
-
-    // Share certificate function
-    function shareCertificate() {
-        const certificateUrl = window.location.href;
-        const certificateTitle = "{{ certificate.course.title }}";
-        const shareText = `I've completed ${certificateTitle} and earned a certificate!`;
-        
-        // Check if Web Share API is supported
-        if (navigator.share) {
-            navigator.share({
-                title: 'Certificate of Completion',
-                text: shareText,
-                url: certificateUrl
-            }).catch(err => {
-                if (err.name !== 'AbortError') {
-                    fallbackShare(certificateUrl);
-                }
-            });
-        } else {
-            fallbackShare(certificateUrl);
-        }
-    }
-    
-    // Fallback share method (copy to clipboard)
-    function fallbackShare(url) {
-        navigator.clipboard.writeText(url).then(() => {
-            alert('Certificate link copied to clipboard!');
-        }).catch(() => {
-            // If clipboard API fails, show prompt
-            prompt('Copy this link:', url);
-        });
-    }
-</script>
-{% endblock %}
+</body>
+</html>

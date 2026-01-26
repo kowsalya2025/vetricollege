@@ -11,7 +11,7 @@ services:
       sh -c "python manage.py migrate &&
          python manage.py create_initial_superuser &&
          python manage.py collectstatic --no-input &&
-         gunicorn lms_project.wsgi:application --bind 0.0.0.0:8000 --env DJANGO_SETTINGS_MODULE=lms_project.settings_local"
+         gunicorn lms_project.wsgi:application --bind 0.0.0.0:8000 --env DJANGO_SETTINGS_MODULE=lms_project.settings"
 
   db:
     image: postgres:15
