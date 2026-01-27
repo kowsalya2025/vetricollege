@@ -34,7 +34,7 @@ if not SECRET_KEY:
 DEBUG = os.getenv("DJANGO_DEBUG", "False") == "True"
 
 ALLOWED_HOSTS = [
-    "internproject5-c38q.onrender.com",
+    "vetricollege.onrender.com",
     "localhost",
     "127.0.0.1",
     ".onrender.com",
