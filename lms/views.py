@@ -177,32 +177,60 @@ def logout_view(request):
 
 
 # ===== COURSE VIEWS =====
+
+from django.db.models import Count, Q
+
 def all_courses(request):
-    """View for all courses page with filtering"""
     courses = Course.objects.filter(is_active=True).order_by('-created_at')
-    categories = CourseCategory.objects.filter(is_active=True).order_by('order')
-    
-    category_counts = {}
-    for category in categories:
-        category_counts[category.slug] = Course.objects.filter(
-            category=category, 
-            is_active=True
-        ).count()
-    
+
+    categories = CourseCategory.objects.filter(is_active=True).annotate(
+        course_count=Count(
+            'courses',
+            filter=Q(courses__is_active=True)
+        )
+    ).order_by('order')
+
     all_courses_count = courses.count()
-    
+
     category_slug = request.GET.get('category')
     if category_slug:
         courses = courses.filter(category__slug=category_slug)
-    
+
     context = {
         'courses': courses,
         'categories': categories,
-        'category_counts': category_counts,
         'all_courses_count': all_courses_count,
         'selected_category': category_slug,
     }
     return render(request, 'courses/all.html', context)
+
+
+# def all_courses(request):
+#     """View for all courses page with filtering"""
+#     courses = Course.objects.filter(is_active=True).order_by('-created_at')
+#     categories = CourseCategory.objects.filter(is_active=True).order_by('order')
+    
+#     category_counts = {}
+#     for category in categories:
+#         category_counts[category.slug] = Course.objects.filter(
+#             category=category, 
+#             is_active=True
+#         ).count()
+    
+#     all_courses_count = courses.count()
+    
+#     category_slug = request.GET.get('category')
+#     if category_slug:
+#         courses = courses.filter(category__slug=category_slug)
+    
+#     context = {
+#         'courses': courses,
+#         'categories': categories,
+#         'category_counts': category_counts,
+#         'all_courses_count': all_courses_count,
+#         'selected_category': category_slug,
+#     }
+#     return render(request, 'courses/all.html', context)
 
 
 def courses_by_category(request, category_slug):
@@ -537,14 +565,17 @@ def mark_video_complete(request, video_id):
 
 
 
+
+
 from django.shortcuts import render
 from django.contrib.auth.decorators import login_required
-from .models import Purchase, CourseEnrollment, CourseProgress, Certificate
+from .models import Purchase, CourseEnrollment, CourseProgress, Certificate, Quiz
+
 
 @login_required
 def my_courses(request):
     """Display user's purchased and enrolled courses with first video, progress, and certificate"""
-
+    
     # Purchases
     purchases = Purchase.objects.filter(
         user=request.user,
@@ -553,7 +584,7 @@ def my_courses(request):
         'course__instructors',
         'course__curriculum_days__videos'
     ).order_by('-purchased_at')
-
+    
     # Legacy enrollments
     enrollments = CourseEnrollment.objects.filter(
         user=request.user
@@ -561,20 +592,31 @@ def my_courses(request):
         'course__instructors',
         'course__curriculum_days__videos'
     ).order_by('-enrolled_at')
-
+    
     # Filter out enrollments that are already purchased
     purchased_course_ids = [p.course.id for p in purchases]
     enrollments = [e for e in enrollments if e.course.id not in purchased_course_ids]
-
+    
     # Collect all course IDs for bulk fetching progress and certificates
     all_courses = [p.course for p in purchases] + [e.course for e in enrollments]
     course_ids = [c.id for c in all_courses]
-
-    # Bulk fetch progress and certificates
-    progress_map = {cp.course_id: cp for cp in CourseProgress.objects.filter(user=request.user, course_id__in=course_ids)}
-    certificate_map = {cert.course_id: cert for cert in Certificate.objects.filter(user=request.user, course_id__in=course_ids)}
-
-    # Assign first video, progress, certificate
+    
+    # Bulk fetch progress, certificates, and quizzes
+    progress_map = {
+        cp.course_id: cp 
+        for cp in CourseProgress.objects.filter(user=request.user, course_id__in=course_ids)
+    }
+    certificate_map = {
+        cert.course_id: cert 
+        for cert in Certificate.objects.filter(user=request.user, course_id__in=course_ids)
+    }
+    earned_certificates = list(certificate_map.values())
+    quiz_map = {
+        quiz.course_id: True 
+        for quiz in Quiz.objects.filter(course_id__in=course_ids)
+    }
+    
+    # Assign first video, progress, certificate, and quiz status
     def enhance_course(obj):
         first_video = None
         for day in obj.course.curriculum_days.all().order_by('order', 'day_number'):
@@ -582,22 +624,88 @@ def my_courses(request):
             if videos.exists():
                 first_video = videos.first()
                 break
+        
         obj.first_video = first_video
         obj.progress = progress_map.get(obj.course.id)
         obj.certificate = certificate_map.get(obj.course.id)
-
+        obj.has_quiz = quiz_map.get(obj.course.id, False)
+    
     for p in purchases:
         enhance_course(p)
     for e in enrollments:
         enhance_course(e)
+    
+    # Combine purchases and enrollments for the template
+    all_purchases = list(purchases) + list(enrollments)
+   
 
+
+    
     context = {
-        'purchases': purchases,
-        'enrollments': enrollments,
+        'purchases': all_purchases,  # Combined list for template
         'title': 'My Courses',
+        'certificates': earned_certificates, 
     }
-
+    
     return render(request, 'lms/my_courses.html', context)
+
+# @login_required
+# def my_courses(request):
+#     """Display user's purchased and enrolled courses with first video, progress, and certificate"""
+
+#     # Purchases
+#     purchases = Purchase.objects.filter(
+#         user=request.user,
+#         payment_status='completed'
+#     ).select_related('course__category').prefetch_related(
+#         'course__instructors',
+#         'course__curriculum_days__videos'
+#     ).order_by('-purchased_at')
+
+#     # Legacy enrollments
+#     enrollments = CourseEnrollment.objects.filter(
+#         user=request.user
+#     ).select_related('course__category').prefetch_related(
+#         'course__instructors',
+#         'course__curriculum_days__videos'
+#     ).order_by('-enrolled_at')
+
+#     # Filter out enrollments that are already purchased
+#     purchased_course_ids = [p.course.id for p in purchases]
+#     enrollments = [e for e in enrollments if e.course.id not in purchased_course_ids]
+
+#     # Collect all course IDs for bulk fetching progress and certificates
+#     all_courses = [p.course for p in purchases] + [e.course for e in enrollments]
+#     course_ids = [c.id for c in all_courses]
+
+#     # Bulk fetch progress and certificates
+#     progress_map = {cp.course_id: cp for cp in CourseProgress.objects.filter(user=request.user, course_id__in=course_ids)}
+#     certificate_map = {cert.course_id: cert for cert in Certificate.objects.filter(user=request.user, course_id__in=course_ids)}
+
+#     # Assign first video, progress, certificate
+#     def enhance_course(obj):
+#         first_video = None
+#         for day in obj.course.curriculum_days.all().order_by('order', 'day_number'):
+#             videos = day.videos.all().order_by('order', 'id')
+#             if videos.exists():
+#                 first_video = videos.first()
+#                 break
+#         obj.first_video = first_video
+#         obj.progress = progress_map.get(obj.course.id)
+#         obj.certificate = certificate_map.get(obj.course.id)
+
+#     for p in purchases:
+#         enhance_course(p)
+#     for e in enrollments:
+#         enhance_course(e)
+
+#     context = {
+#         'purchases': purchases,
+#         'enrollments': enrollments,
+#         'title': 'My Courses',
+#     }
+
+#     return render(request, 'lms/my_courses.html', context)
 
 
 
@@ -1602,7 +1710,7 @@ def mark_video_complete(request, video_id):
             'error': str(e),
             'message': f'Error marking video complete: {str(e)}'
         }, status=400)
-
+    
 @login_required
 def my_achievements(request):
     """Optimized version for better performance with large datasets"""
@@ -1613,19 +1721,18 @@ def my_achievements(request):
     # 1. Get certificates with optimized query
     certificates = Certificate.objects.filter(
         user=user
-    ).select_related('course').only(
-        'certificate_id', 'issue_date', 'quiz_score',
-        'course__title', 'course__slug', 'course__thumbnail'
-    ).order_by('-issue_date')
+    ).select_related('course').order_by('-issue_date')
     
-    # 2. Get progress with aggregated data
-    from django.db.models import Count, Case, When, IntegerField, FloatField
+    # Debug: Print certificate count
+    print(f"DEBUG: Total certificates for user {user.username}: {certificates.count()}")
     
-    # Get all courses the user has purchased
+    # 2. Get all courses the user has purchased
     purchased_course_ids = Purchase.objects.filter(
         user=user,
         payment_status='completed'
     ).values_list('course_id', flat=True)
+    
+    print(f"DEBUG: Purchased course IDs: {list(purchased_course_ids)}")
     
     purchased_courses = Course.objects.filter(
         id__in=purchased_course_ids
@@ -1634,26 +1741,32 @@ def my_achievements(request):
             'curriculum_days__videos',
             queryset=Video.objects.only('id')
         )
-    ).only('id', 'title', 'slug', 'thumbnail')
+    )
     
     # 3. Get course progress efficiently
     progress_queryset = CourseProgress.objects.filter(
         user=user,
         course__in=purchased_courses
-    ).select_related('course').only(
-        'course__title', 'progress_percentage', 
-        'is_completed', 'quiz_passed', 'last_quiz_attempt_id'
-    ).annotate(
+    ).select_related('course').annotate(
         completed_videos_count=Count('completed_videos')
     )
     
-    # 4. Calculate statistics in bulk
+    print(f"DEBUG: Progress queryset count: {progress_queryset.count()}")
+    print(f"DEBUG: Quiz passed count: {progress_queryset.filter(quiz_passed=True).count()}")
+    
+    # 4. Calculate statistics
     total_courses = purchased_courses.count()
+    total_certificates = certificates.count()
+    
+    # Count courses with certificates
     completed_courses = certificates.values('course').distinct().count()
     
     # Alternative: Count from progress
     completed_from_progress = progress_queryset.filter(is_completed=True).count()
     completed_courses = max(completed_courses, completed_from_progress)
+    
+    # Count total quizzes passed
+    total_quiz_passed = progress_queryset.filter(quiz_passed=True).count()
     
     in_progress_courses = total_courses - completed_courses
     
@@ -1695,19 +1808,20 @@ def my_achievements(request):
         )
     )
     
+    print(f"DEBUG: Final counts - Certificates: {total_certificates}, Quizzes Passed: {total_quiz_passed}")
+    
     context = {
-        'certificates': certificates[:10],  # Limit for display
+        'certificates': certificates,
         'progress_data': detailed_progress,
         'completed_courses': completed_courses,
         'in_progress_courses': max(0, in_progress_courses),
         'total_courses': total_courses,
+        'total_certificates': total_certificates,
+        'total_quiz_passed': total_quiz_passed,
         'user': user,
     }
     
     return render(request, 'lms/achievements.html', context)
-
-
-
     
 @login_required
 def certificate_detail(request, certificate_id):

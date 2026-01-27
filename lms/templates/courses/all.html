@@ -2,96 +2,126 @@
 {% extends 'lms/base.html' %}
 {% load static %}
 
+{% block title %}All Courses{% endblock %}
+
 {% block content %}
-<div class="all-courses-page">
-    <div class="container">
-        <h1 class="page-title">All Courses</h1>
-        
-        <!-- Category Filter -->
-        <div class="category-filter">
-            <a href="{% url 'all_courses' %}" class="category-btn {% if not selected_category %}active{% endif %}">
-                All Courses <span class="count">({{ all_courses_count }})</span>
-            </a>
-            
-            {% for category in categories %}
-            <a href="?category={{ category.slug }}" class="category-btn {% if selected_category == category.slug %}active{% endif %}">
-                {{ category.name }} 
-                {% if category_counts %}
-                    {% for key, value in category_counts.items %}
-                        {% if key == category.slug %}
-                            <span class="count">({{ value }})</span>
-                        {% endif %}
-                    {% endfor %}
-                {% else %}
-                    <span class="count">({{ category.course_set.count }})</span>
-                {% endif %}
-            </a>
-            {% endfor %}
+<div class="container py-5">
+
+    <!-- Page Heading -->
+    <div class="mb-4">
+        <h2 class="fw-bold">All Courses</h2>
+        <p class="text-muted">Explore our available courses</p>
+    </div>
+
+    <div class="row">
+        <!-- Sidebar Categories -->
+        <div class="col-lg-3 mb-4">
+            <div class="card shadow-sm">
+                <div class="card-body">
+                    <h5 class="fw-bold mb-3">Categories</h5>
+
+                    <ul class="list-group list-group-flush">
+                        <li class="list-group-item {% if not selected_category %}active{% endif %}">
+                            <a href="{% url 'all_courses' %}" class="text-decoration-none d-flex justify-content-between text-reset">
+                                <span>All Courses</span>
+                                <span class="badge bg-secondary">{{ all_courses_count }}</span>
+                            </a>
+                        </li>
+
+                        {% for category in categories %}
+                        <li class="list-group-item {% if selected_category == category.slug %}active{% endif %}">
+                            <a href="?category={{ category.slug }}" class="text-decoration-none d-flex justify-content-between text-reset">
+                                <span>{{ category.name }}</span>
+                                <span class="badge bg-secondary">
+                                    {{ category.course_count }}
+
+                                </span>
+                            </a>
+                        </li>
+                        {% endfor %}
+                    </ul>
+                </div>
+            </div>
         </div>
-        
-        <!-- Course Grid -->
-        <div class="courses-grid">
-            {% for course in courses %}
-            <div class="course-card">
-                {% if course.image %}
-                <div class="course-image">
-                    <img src="{{ course.image.url }}" alt="{{ course.title }}">
-                    {% if course.is_on_discount %}
-                    <span class="discount-badge">
-                        {% if course.discount_price and course.price %}
-                            SAVE {{ course.get_discount_percentage|floatformat:0 }}%
+
+        <!-- Courses Grid -->
+        <div class="col-lg-9">
+            <div class="row g-4">
+
+                {% for course in courses %}
+                <div class="col-md-6 col-lg-4">
+                    <div class="card h-100 shadow-sm">
+
+                        <!-- Course Image -->
+                        {% if course.thumbnail %}
+                        <img src="{{ course.thumbnail.url }}" class="card-img-top" alt="{{ course.title }}">
                         {% else %}
-                            SALE
+                        <img src="{% static 'images/course-placeholder.jpg' %}" class="card-img-top" alt="Course">
                         {% endif %}
-                    </span>
-                    {% endif %}
-                </div>
-                {% endif %}
-                
-                <div class="course-content">
-                    <div class="category-tag">{{ course.category.name }}</div>
-                    
-                    <h3 class="course-title">
-                        <a href="{% url 'course_detail' course.slug %}">{{ course.title }}</a>
-                    </h3>
-                    
-                    <p class="course-description">{{ course.short_description|truncatewords:20|default:"" }}</p>
-                    
-                    <div class="course-meta">
-                        <span class="instructor">
-                            <i class="fas fa-user"></i> {{ course.instructors|default:"Expert Instructor" }}
-                        </span>
-                        <span class="duration">
-                            <i class="fas fa-clock"></i> {{ course.duration|default:"Self-paced" }}
-                        </span>
-                    </div>
-                    
-                    <div class="course-footer">
-                        <div class="price-section">
-                            {% if course.is_on_discount and course.discount_price %}
-                            <span class="original-price">₹{{ course.price|floatformat:2 }}</span>
-                            <span class="current-price">₹{{ course.discount_price|floatformat:2 }}</span>
-                            {% else %}
-                            <span class="current-price">₹{{ course.price|floatformat:2 }}</span>
+
+                        <div class="card-body d-flex flex-column">
+
+                            <!-- Category -->
+                            {% if course.category %}
+                            <small class="text-muted">{{ course.category.name }}</small>
                             {% endif %}
+
+                            <!-- Title -->
+                            <h5 class="fw-bold mt-2">{{ course.title }}</h5>
+
+                            <!-- Short Description -->
+                            <p class="text-muted small">
+                                {{ course.short_description|truncatechars:80 }}
+                            </p>
+
+                            <!-- Price Section (FIXED) -->
+                            <div class="mt-auto">
+                                <!-- <div class="mb-2">
+
+                                    {% if course.is_on_discount and course.discount_price %}
+                                        {% if course.price %}
+                                            <span class="text-muted text-decoration-line-through me-2">
+                                                ₹{{ course.price }}
+                                            </span>
+                                        {% endif %}
+                                        <span class="fw-bold text-success">
+                                            ₹{{ course.discount_price }}
+                                        </span>
+
+                                    {% elif course.price %}
+                                        <span class="fw-bold text-success">
+                                            ₹{{ course.price }}
+                                        </span>
+
+                                    {% else %}
+                                        <span class="fw-bold text-success">
+                                            Free
+                                        </span>
+                                    {% endif %}
+
+                                </div> -->
+
+                                <!-- View Button -->
+                                <a href="{% url 'course_detail' course.slug %}" class="btn btn-outline-primary w-100">
+                                    View Course
+                                </a>
+                            </div>
+
                         </div>
-                        
-                        <a href="{% url 'course_detail' course.slug %}" class="view-course-btn">
-                            View Course <i class="fas fa-arrow-right"></i>
-                        </a>
                     </div>
                 </div>
+                {% empty %}
+                <div class="col-12">
+                    <p class="text-center text-muted">No courses available.</p>
+                </div>
+                {% endfor %}
+
             </div>
-            {% empty %}
-            <div class="no-courses">
-                <i class="fas fa-book-open"></i>
-                <h3>No courses found</h3>
-                <p>Check back soon for new courses!</p>
-            </div>
-            {% endfor %}
         </div>
     </div>
 </div>
+
+
 
 <style>
 .all-courses-page {

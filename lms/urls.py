@@ -43,6 +43,7 @@ urlpatterns = [
     # Quiz
     path('course/<slug:course_slug>/quiz/', views.quiz_start, name='quiz_start'),
     path('course/<slug:course_slug>/quiz/take/', views.quiz_take, name='quiz_take'),
+  
     path('quiz/attempt/<int:attempt_id>/submit/', views.quiz_submit, name='quiz_submit'),
     path('quiz/attempt/<int:attempt_id>/result/', views.quiz_result, name='quiz_result'),
 

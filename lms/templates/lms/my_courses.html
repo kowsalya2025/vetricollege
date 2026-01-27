@@ -378,7 +378,7 @@
     
     <!-- Quiz Button -->
     {% if item.has_quiz %}
-        <a href="{% url 'take_quiz' item.course.slug %}" class="course-button btn-quiz">
+        <a href="{% url 'quiz_take' item.course.slug %}" class="course-button btn-quiz">
             {% if item.progress and item.progress.quiz_passed %}
                 ✓ Retake Quiz
             {% else %}
@@ -416,15 +416,24 @@
 
     <!-- Achievements Tab Content -->
     <div id="achievements-content" class="tab-content">
-        <div class="empty-state">
-            <div class="empty-state-icon">
-                🏆
-            </div>
-            <h3>Achievements & Certificates</h3>
-            <p>Complete courses to earn certificates and achievements!</p>
-            <a href="{% url 'all_courses' %}" class="btn">Start Learning</a>
+    <div class="empty-state">
+        <div class="empty-state-icon">
+            🏆
         </div>
+        <h3>Achievements & Certificates</h3>
+        <p>Complete courses to earn certificates and achievements!</p>
+        
+        {% if certificates %}
+            <a href="{% url 'my_achievements' %}" class="btn" style="margin-right: 0.5rem;">
+                🏆 View My Achievements
+            </a>
+        {% endif %}
+        
+        <a href="{% url 'all_courses' %}" class="btn">
+            {% if certificates %}Browse More Courses{% else %}Start Learning{% endif %}
+        </a>
     </div>
+</div>
 </div>
 
 <script>
@@ -445,7 +454,7 @@ function switchTab(tabName, element) {
     } else {
         document.getElementById('achievements-content').classList.add('active');
     }
-}
+} 
 
 // Handle back button navigation
 window.addEventListener('popstate', function(event) {
