@@ -102,7 +102,7 @@
     
     .course-features {
         background: white;
-        padding: 40px;
+        padding: 80px;
         border-radius: 12px;
         margin-bottom: 40px;
         box-shadow: 0 1px 3px rgba(0,0,0,0.1);
@@ -117,15 +117,15 @@
     
     .feature-grid {
         display: grid;
-        grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
-        gap: 30px;
+        grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+        gap: 50px;
         margin-bottom: 40px;
     }
     
     .feature-item {
         display: flex;
         align-items: center;
-        gap: 15px;
+        gap: 25px;
     }
     
     .feature-icon {
@@ -1100,11 +1100,26 @@
     </div>
     
     <!-- Curriculum Section -->
-    <div class="curriculum-section">
-        <div class="curriculum-header">
-            <h2>Course Curriculum</h2>
-            <button class="download-brochure">Download Brochure</button>
-        </div>
+   <div class="curriculum-header">
+    <h2>Course Curriculum</h2>
+    
+    {% if course.brochure %}
+        <!-- If brochure exists, download it -->
+        <a href="{{ course.brochure.url }}" 
+           download="{{ course.title }}_Brochure.pdf"
+           class="download-brochure"
+           style="text-decoration: none; display: inline-block;">
+            <i class="fas fa-download"></i> Download Brochure
+        </a>
+    {% else %}
+        <!-- If no brochure, generate dynamic PDF -->
+        <a href="{% url 'download_brochure' course.slug %}" 
+           class="download-brochure"
+           style="text-decoration: none; display: inline-block;">
+            <i class="fas fa-file-pdf"></i> Download Brochure
+        </a>
+    {% endif %}
+</div>
         
         {% for day in curriculum_days %}
         <div class="curriculum-day">
@@ -1497,6 +1512,10 @@ document.addEventListener('click', function(e) {
     }
 });
 </script>
-
+<script>
+    function generateBrochure() {
+    window.location.href = '/course/{{ course.slug }}/download-brochure/';
+}
+</script>
 
 {% endblock %}

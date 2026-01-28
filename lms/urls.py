@@ -61,4 +61,8 @@ urlpatterns = [
     path('contact/', views.placeholder_view, {'page_name': 'contact'}, name='contact'), 
     path('privacy/', views.placeholder_view, {'page_name': 'privacy'}, name='privacy'),
       path('terms/', views.placeholder_view, {'page_name': 'terms'}, name='terms'),
+
+    path('course/<slug:slug>/download-brochure/', 
+         views.download_brochure, 
+         name='download_brochure'),
 ]

@@ -711,7 +711,7 @@ def my_courses(request):
 
 from django.urls import reverse
 from django.http import HttpResponseRedirect
-
+from .models import Video, Course, Tool
 
 
 def video_player(request, video_id):
@@ -727,8 +727,11 @@ def video_player(request, video_id):
         Video.objects.select_related("curriculum_day__course"),
         id=video_id,
     )
+    
 
     course = video.curriculum_day.course
+
+    tools = video.tools_needed.all() if video.tools_needed.exists() else course.tools.all()
 
     # -------------------------------------------------
     # Access control
@@ -911,6 +914,8 @@ def video_player(request, video_id):
                 course=course,
             ).first()
 
+        
+
     # -------------------------------------------------
     # Context
     # -------------------------------------------------
@@ -934,6 +939,7 @@ def video_player(request, video_id):
         "has_quiz": has_quiz,
         "course_completed": course_completed,
         "certificate": certificate,
+        'tools': tools,
     }
 
     return render(request, "courses/video_player.html", context)
@@ -1909,3 +1915,145 @@ def download_certificate(request, certificate_id):
         # Clean up temp file
         if temp_path and os.path.exists(temp_path):
             os.unlink(temp_path)
+
+
+
+# views.py - Add this view to generate PDF brochure dynamically
+# At the TOP of your views.py, make sure you have these imports:
+
+from django.shortcuts import render, get_object_or_404, redirect
+from django.http import HttpResponse, JsonResponse
+from django.db.models import Count, Q, Avg, Sum  # ← ADD THIS LINE
+from django.contrib.auth.decorators import login_required
+
+# For PDF generation
+from reportlab.lib.pagesizes import A4
+from reportlab.lib.styles import getSampleStyleSheet, ParagraphStyle
+from reportlab.lib.units import inch
+from reportlab.platypus import SimpleDocTemplate, Paragraph, Spacer, Table, TableStyle
+from reportlab.lib import colors
+from io import BytesIO
+import re
+
+# Your models
+from .models import Course, Video, CurriculumDay, Instructor, Tool
+
+# ... rest of your imports ...
+
+
+# Then add this function:
+def download_brochure(request, slug):
+    """Generate PDF brochure using ReportLab"""
+    course = get_object_or_404(Course, slug=slug)
+    
+    # Create BytesIO buffer
+    buffer = BytesIO()
+    
+    # Create PDF document
+    doc = SimpleDocTemplate(buffer, pagesize=A4, topMargin=0.5*inch, bottomMargin=0.5*inch)
+    elements = []
+    styles = getSampleStyleSheet()
+    
+    # Custom styles
+    title_style = ParagraphStyle(
+        'CustomTitle',
+        parent=styles['Heading1'],
+        fontSize=26,
+        textColor=colors.HexColor('#10b981'),
+        spaceAfter=20,
+        alignment=1,  # Center
+        fontName='Helvetica-Bold'
+    )
+    
+    heading_style = ParagraphStyle(
+        'CustomHeading',
+        parent=styles['Heading2'],
+        fontSize=16,
+        textColor=colors.HexColor('#065f46'),
+        spaceAfter=12,
+        spaceBefore=20,
+        fontName='Helvetica-Bold'
+    )
+    
+    # Title
+    elements.append(Paragraph(course.title, title_style))
+    elements.append(Spacer(1, 0.3*inch))
+    
+    # Description
+    if course.description:
+        elements.append(Paragraph("Course Description", heading_style))
+        # Remove HTML tags from description
+        clean_desc = re.sub('<[^<]+?>', '', course.description)
+        elements.append(Paragraph(clean_desc[:500], styles['BodyText']))
+        elements.append(Spacer(1, 0.2*inch))
+    
+    # Course Details Table
+    elements.append(Paragraph("Course Details", heading_style))
+    details_data = [
+        ['Duration', f"{course.duration_hours} Hours"],
+        ['Original Price', f"₹{course.original_price}"],
+        ['Discounted Price', f"₹{course.discounted_price}"],
+        ['Language', course.languages or 'English'],
+        ['Access Level', course.access_level or 'All Levels'],
+        ['Total Learners', str(course.total_learners)],
+    ]
+    
+    details_table = Table(details_data, colWidths=[2*inch, 4*inch])
+    details_table.setStyle(TableStyle([
+        ('BACKGROUND', (0, 0), (0, -1), colors.HexColor('#d1fae5')),
+        ('TEXTCOLOR', (0, 0), (-1, -1), colors.black),
+        ('ALIGN', (0, 0), (-1, -1), 'LEFT'),
+        ('FONTNAME', (0, 0), (0, -1), 'Helvetica-Bold'),
+        ('FONTSIZE', (0, 0), (-1, -1), 11),
+        ('BOTTOMPADDING', (0, 0), (-1, -1), 12),
+        ('TOPPADDING', (0, 0), (-1, -1), 12),
+        ('GRID', (0, 0), (-1, -1), 1, colors.grey),
+        ('VALIGN', (0, 0), (-1, -1), 'MIDDLE'),
+    ]))
+    elements.append(details_table)
+    elements.append(Spacer(1, 0.3*inch))
+    
+    # Instructors
+    instructors = course.instructors.all()
+    if instructors:
+        elements.append(Paragraph("Instructors", heading_style))
+        instructor_names = ", ".join([inst.name for inst in instructors])
+        elements.append(Paragraph(instructor_names, styles['BodyText']))
+        elements.append(Spacer(1, 0.2*inch))
+    
+    # Curriculum
+    elements.append(Paragraph("Course Curriculum", heading_style))
+    
+    curriculum_days = course.curriculum_days.all().prefetch_related('videos')
+    for day in curriculum_days:
+        # Day title
+        day_title = f"<b>Day {day.day_number}: {day.title}</b>"
+        elements.append(Paragraph(day_title, styles['Normal']))
+        elements.append(Spacer(1, 0.05*inch))
+        
+        # Videos
+        videos = day.videos.all()
+        for video in videos:
+            video_text = f"&nbsp;&nbsp;&nbsp;&nbsp;• {video.title} ({video.duration} min)"
+            elements.append(Paragraph(video_text, styles['Normal']))
+        
+        elements.append(Spacer(1, 0.15*inch))
+    
+    # Footer
+    elements.append(Spacer(1, 0.3*inch))
+    footer_text = f"<i>For more information, visit our website or contact us.</i>"
+    elements.append(Paragraph(footer_text, styles['Normal']))
+    
+    # Build PDF
+    doc.build(elements)
+    
+    # Get PDF data
+    pdf = buffer.getvalue()
+    buffer.close()
+    
+    # Create response
+    response = HttpResponse(content_type='application/pdf')
+    response['Content-Disposition'] = f'attachment; filename="{course.slug}_brochure.pdf"'
+    response.write(pdf)
+    
+    return response

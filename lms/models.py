@@ -182,6 +182,65 @@ class Instructor(models.Model):
 
 
 
+
+from django.db import models
+
+class Tool(models.Model):
+    """Software tools that students need for courses"""
+    name = models.CharField(max_length=100, help_text="e.g., Figma, Photoshop")
+    description = models.TextField(blank=True, help_text="What this tool is used for")
+    
+    # Icon options (use one)
+    icon_class = models.CharField(
+        max_length=100, 
+        blank=True, 
+        help_text="Font Awesome class, e.g., 'fab fa-figma'"
+    )
+    icon_image = models.ImageField(
+        upload_to='tool_icons/', 
+        blank=True, 
+        null=True,
+        help_text="Custom icon image"
+    )
+    
+    # Download/Info links
+    download_url = models.URLField(
+        blank=True, 
+        help_text="Link to download or learn more"
+    )
+    
+    # Metadata
+    is_required = models.BooleanField(
+        default=True,
+        help_text="Is this tool required or optional?"
+    )
+    order = models.IntegerField(default=0, help_text="Display order")
+    
+    # Categories for filtering
+    TOOL_CATEGORIES = [
+        ('design', 'Design Tools'),
+        ('development', 'Development Tools'),
+        ('video', 'Video Editing'),
+        ('data', 'Data Science'),
+        ('other', 'Other'),
+    ]
+    category = models.CharField(
+        max_length=20, 
+        choices=TOOL_CATEGORIES, 
+        default='other'
+    )
+    
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+    
+    class Meta:
+        ordering = ['order', 'name']
+        verbose_name = 'Tool'
+        verbose_name_plural = 'Tools'
+    
+    def __str__(self):
+        return self.name
+
 # ============================
 # COURSE
 # ============================
@@ -276,6 +335,12 @@ class Course(models.Model):
         max_length=100,
         default="Anyone Can Learn (IT / Non-IT)"
     )
+    tools = models.ManyToManyField(
+        Tool, 
+        blank=True, 
+        related_name='courses',
+        help_text="Tools needed for this entire course"
+    )
 
     # =========================
     # CONTENT
@@ -313,6 +378,18 @@ class Course(models.Model):
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
 
+    brochure = models.FileField(
+        upload_to='course_brochures/',
+        blank=True,
+        null=True,
+        help_text="Upload course brochure/syllabus PDF"
+    )
+
+    def get_brochure_url(self):
+        """Return brochure URL if available"""
+        if self.brochure:
+            return self.brochure.url
+        return None
     # =========================
     # ICON MAPPINGS (CLASS ATTRIBUTES)
     # =========================
@@ -447,6 +524,12 @@ class CurriculumDay(models.Model):
     description = models.TextField(blank=True)
     is_free = models.BooleanField(default=False, help_text="Make this day free for all users")
     order = models.IntegerField(default=0, help_text="Display order")
+    tools = models.ManyToManyField(
+        Tool, 
+        blank=True, 
+        related_name='curriculum_days',
+        help_text="Tools introduced or needed for this day"
+    )
     
     def __str__(self):
         return f"{self.course.title} - Day {self.day_number:02d}"
@@ -456,7 +539,6 @@ class CurriculumDay(models.Model):
         verbose_name_plural = "Curriculum Days"
         ordering = ['order', 'day_number']
         unique_together = ['course', 'day_number']
-
 
 
 
@@ -482,6 +564,12 @@ class Video(models.Model):
     thumbnail = models.ImageField(upload_to='video_thumbnails/', blank=True, null=True)
     order = models.IntegerField(default=0)
     is_free = models.BooleanField(default=False)
+    tools_needed = models.ManyToManyField(
+        Tool, 
+        blank=True, 
+        related_name='videos',
+        help_text="Specific tools needed for this video"
+    )
 
     def __str__(self):
         return f"{self.curriculum_day} - {self.title}"

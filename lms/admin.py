@@ -209,6 +209,30 @@ class CourseReviewInline(admin.TabularInline):
         return False
 
 
+
+from django.contrib import admin
+from .models import Tool
+
+@admin.register(Tool)
+class ToolAdmin(admin.ModelAdmin):
+    list_display = ['name', 'category', 'is_required', 'order', 'created_at']
+    list_filter = ['category', 'is_required']
+    search_fields = ['name', 'description']
+    list_editable = ['order', 'is_required']
+    
+    fieldsets = (
+        ('Basic Information', {
+            'fields': ('name', 'description', 'category', 'is_required', 'order')
+        }),
+        ('Icon', {
+            'fields': ('icon_class', 'icon_image'),
+            'description': 'Choose either Font Awesome class OR upload custom image'
+        }),
+        ('Links', {
+            'fields': ('download_url',)
+        }),
+    )
+
 # ============================
 # COURSE ADMIN
 # ============================
@@ -280,6 +304,8 @@ class CourseAdmin(admin.ModelAdmin):
     prepopulated_fields = {
         'slug': ('title',)
     }
+
+    filter_horizontal = ['tools']
 
     # =========================
     # FORM LAYOUT
@@ -479,6 +505,7 @@ class VideoAdmin(admin.ModelAdmin):
     list_filter = ['curriculum_day__course', 'is_free']
     search_fields = ['title', 'description']
     ordering = ['curriculum_day', 'order']
+    filter_horizontal = ['tools_needed']
     
     fieldsets = (
         ('Video Information', {
