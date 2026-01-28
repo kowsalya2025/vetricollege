@@ -1041,7 +1041,6 @@ def checkout(request, slug):
     return render(request, 'courses/checkout.html', context)
 
 # ========== STRIPE CHECKOUT (MISSING!) ==========
-
 import stripe
 import traceback
 from django.conf import settings
@@ -1051,11 +1050,39 @@ from django.contrib import messages
 from django.utils import timezone
 from django.http import JsonResponse, HttpResponse
 from django.views.decorators.csrf import csrf_exempt
+from django.urls import reverse
 from .models import Course, Payment, Purchase, CourseEnrollment
+
 @login_required
 def stripe_checkout(request, slug):
     course = get_object_or_404(Course, slug=slug)
-    amount = int(float(course.original_price) * 100)  # amount in paise
+    
+    # ===== CHANGED: Use discounted price instead of original price =====
+    original_price = float(course.original_price)
+    discounted_price = float(course.discounted_price)
+    
+    # Use discounted price if it's lower than original
+    is_discounted = discounted_price < original_price
+    base_price = discounted_price if is_discounted else original_price
+    
+    # Calculate tax (18% GST)
+    tax_amount = base_price * 0.18
+    total_amount = base_price + tax_amount
+    
+    # Convert to paise (Stripe uses smallest currency unit)
+    amount = int(round(total_amount * 100))
+    # ===== END OF CHANGES =====
+    
+    # Optional: Print for debugging
+    print(f"=== STRIPE CHECKOUT DEBUG ===")
+    print(f"Course: {course.title}")
+    print(f"Original Price: ₹{original_price}")
+    print(f"Discounted Price: ₹{discounted_price}")
+    print(f"Base Price Used: ₹{base_price}")
+    print(f"Tax (18%): ₹{tax_amount}")
+    print(f"Total Amount: ₹{total_amount}")
+    print(f"Amount in Paise: {amount}")
+    print(f"============================")
 
     try:
         checkout_session = stripe.checkout.Session.create(
@@ -1065,9 +1092,9 @@ def stripe_checkout(request, slug):
                     'currency': 'inr',
                     'product_data': {
                         'name': course.title,
-                        'description': course.short_description[:100] or course.title,
+                        'description': course.short_description[:100] if hasattr(course, 'short_description') and course.short_description else course.title,
                     },
-                    'unit_amount': amount,
+                    'unit_amount': amount,  # Now using discounted price + tax
                 },
                 'quantity': 1,
             }],
@@ -1082,6 +1109,10 @@ def stripe_checkout(request, slug):
             metadata={
                 'course_id': str(course.id),
                 'user_id': str(request.user.id),
+                'base_price': f"{base_price:.2f}",
+                'tax_amount': f"{tax_amount:.2f}",
+                'total_amount': f"{total_amount:.2f}",
+                'is_discounted': 'yes' if is_discounted else 'no',
             }
         )
         return JsonResponse({
@@ -1094,6 +1125,59 @@ def stripe_checkout(request, slug):
         import traceback
         traceback.print_exc()
         return JsonResponse({'success': False, 'error': str(e)})
+
+# import stripe
+# import traceback
+# from django.conf import settings
+# from django.shortcuts import render, redirect, get_object_or_404
+# from django.contrib.auth.decorators import login_required
+# from django.contrib import messages
+# from django.utils import timezone
+# from django.http import JsonResponse, HttpResponse
+# from django.views.decorators.csrf import csrf_exempt
+# from .models import Course, Payment, Purchase, CourseEnrollment
+# @login_required
+# def stripe_checkout(request, slug):
+#     course = get_object_or_404(Course, slug=slug)
+#     amount = int(float(course.original_price) * 100)  # amount in paise
+
+#     try:
+#         checkout_session = stripe.checkout.Session.create(
+#             payment_method_types=['card'],
+#             line_items=[{
+#                 'price_data': {
+#                     'currency': 'inr',
+#                     'product_data': {
+#                         'name': course.title,
+#                         'description': course.short_description[:100] or course.title,
+#                     },
+#                     'unit_amount': amount,
+#                 },
+#                 'quantity': 1,
+#             }],
+#             mode='payment',
+#             success_url=request.build_absolute_uri(
+#                 reverse('payment_success')
+#             ) + '?session_id={CHECKOUT_SESSION_ID}',
+#             cancel_url=request.build_absolute_uri(
+#                 reverse('course_detail', args=[course.slug])
+#             ),
+#             customer_email=request.user.email,
+#             metadata={
+#                 'course_id': str(course.id),
+#                 'user_id': str(request.user.id),
+#             }
+#         )
+#         return JsonResponse({
+#             'success': True,
+#             'checkout_url': checkout_session.url,
+#             'session_id': checkout_session.id,
+#         })
+
+#     except Exception as e:
+#         import traceback
+#         traceback.print_exc()
+#         return JsonResponse({'success': False, 'error': str(e)})
 
 @login_required
 def payment_success(request):
