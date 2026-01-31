@@ -293,6 +293,8 @@ class CourseAdmin(admin.ModelAdmin):
         'is_featured',
         'discounted_price',
     )
+    
+    inlines = [CurriculumDayInline]
 
     ordering = ('-created_at',)
 
@@ -480,44 +482,429 @@ class CourseAdmin(admin.ModelAdmin):
         }
 
 
-# ============================
-# CURRICULUM DAY ADMIN
-# ============================
+
+from django.contrib import admin
+from django.utils.html import format_html
+from .models import Video, CurriculumDay
+from datetime import timedelta
+
+# Video Inline for CurriculumDay Admin
+# class VideoInline(admin.TabularInline):
+#     model = Video
+#     extra = 1
+#     fields = ['title', 'video_url', 'video_file', 'thumbnail', 'order', 'is_free', 'show_duration']
+#     readonly_fields = ['show_duration']
+    
+#     def show_duration(self, obj):
+#         if obj.pk and obj.duration:
+#             return obj.duration_display
+#         elif obj.pk and obj.video_file:
+#             return "Processing..."
+#         return "Upload video to calculate"
+#     show_duration.short_description = 'Duration'
+
+from django.contrib import admin
+from django.utils.html import format_html
+from datetime import timedelta
+
+from .models import (
+    Video,
+    CurriculumDay,
+    Course,
+)
+
+# =====================================================
+# VIDEO INLINE (Inside Curriculum Day)
+# =====================================================
+from django.contrib import admin
+from datetime import timedelta
+from .models import CurriculumDay, Video, Course
+
+# -----------------------------
+# Video Inline for CurriculumDay
+# -----------------------------
+class VideoInline(admin.TabularInline):
+    model = Video
+    extra = 1
+    fields = [
+        'title',
+        'video_url',
+        'video_file',
+        'thumbnail',
+        'order',
+        'is_free',
+        'show_duration',
+    ]
+    readonly_fields = ['show_duration']
+
+    def show_duration(self, obj):
+        if obj.duration:
+            return obj.duration_display
+        return "N/A"
+    show_duration.short_description = 'Duration'
+
+
+# -----------------------------
+# CurriculumDay Admin
+# -----------------------------
 @admin.register(CurriculumDay)
 class CurriculumDayAdmin(admin.ModelAdmin):
-    list_display = ['course', 'day_number', 'title', 'is_free', 'order', 'video_count']
-    list_filter = ['course', 'is_free']
-    search_fields = ['course__title', 'title']
-    inlines = [VideoInline]
-    ordering = ['course', 'order', 'day_number']
+    list_display = [
+        'get_course_title',
+        'day_number',
+        'title',
+        'is_free',
+        'order',
+        'video_count',
+        'total_duration_display',
+    ]
+    list_filter = [
+        'course',  # This allows filtering by course
+        'is_free',
+    ]
+    search_fields = [
+        'course__title',
+        'title',
+    ]
+    ordering = [
+        'course',  # Groups by course first
+        'order',
+        'day_number',
+    ]
     
+    # ADD THIS to make it easier to filter
+    list_per_page = 20  # Show 20 per page
+    
+    # ADD THIS to show course filter prominently
+    list_select_related = ['course']  # Optimize queries
+    
+    inlines = [VideoInline]
+
+    # -----------------------------
+    # Helper methods
+    # -----------------------------
+    def get_course_title(self, obj):
+        return obj.course.title
+    get_course_title.short_description = 'Course'
+    get_course_title.admin_order_field = 'course'
+
     def video_count(self, obj):
         return obj.videos.count()
     video_count.short_description = 'Videos'
+
+    def total_duration_display(self, obj):
+        """Total duration of all videos in this day"""
+        total = timedelta()
+
+        for video in obj.videos.all():
+            if video.duration:
+                total += video.duration
+
+        total_seconds = int(total.total_seconds())
+        hours, remainder = divmod(total_seconds, 3600)
+        minutes, seconds = divmod(remainder, 60)
+
+        if hours > 0:
+            return f"{hours}h {minutes}m"
+        elif minutes > 0:
+            return f"{minutes}m"
+        elif seconds > 0:
+            return f"{seconds}s"
+        return "0m"
+
+    total_duration_display.short_description = 'Total Duration'
+# @admin.register(CurriculumDay)
+# class CurriculumDayAdmin(admin.ModelAdmin):
+#     list_display = [
+#         'get_course_title',
+#         'day_number',
+#         'title',
+#         'is_free',
+#         'order',
+#         'video_count',
+#         'total_duration_display',
+#     ]
+#     list_filter = [
+#         'course',
+#         'is_free',
+#     ]
+#     search_fields = [
+#         'course__title',
+#         'title',
+#     ]
+#     ordering = [
+#         'course',
+#         'order',
+#         'day_number',
+#     ]
+#     inlines = [VideoInline]
+
+#     # -----------------------------
+#     # Helper methods
+#     # -----------------------------
+#     def get_course_title(self, obj):
+#         return obj.course.title
+#     get_course_title.short_description = 'Course'
+#     get_course_title.admin_order_field = 'course'
+
+#     def video_count(self, obj):
+#         return obj.videos.count()
+#     video_count.short_description = 'Videos'
+
+#     def total_duration_display(self, obj):
+#         """Total duration of all videos in this day"""
+#         total = timedelta()
+
+#         for video in obj.videos.all():
+#             if video.duration:
+#                 total += video.duration  # Already timedelta, no wrapping needed
+
+#         total_seconds = int(total.total_seconds())
+#         hours, remainder = divmod(total_seconds, 3600)
+#         minutes, seconds = divmod(remainder, 60)
+
+#         if hours > 0:
+#             return f"{hours}h {minutes}m"
+#         elif minutes > 0:
+#             return f"{minutes}m"
+#         elif seconds > 0:
+#             return f"{seconds}s"
+#         return "0m"
+
+#     total_duration_display.short_description = 'Total Duration'
+
+
+
+# =====================================================
+# VIDEO ADMIN
+# =====================================================
+@admin.register(Video)
+class VideoAdmin(admin.ModelAdmin):
+    list_display = [
+        'title',
+        'get_course',
+        'get_day',
+        'order',
+        'is_free',
+        'show_duration',
+        'has_file',
+    ]
+
+    list_filter = [
+        'curriculum_day__course',
+        'curriculum_day',
+        'is_free',
+    ]
+
+    search_fields = [
+        'title',
+        'curriculum_day__title',
+        'curriculum_day__course__title',
+    ]
+
+    ordering = [
+        'curriculum_day__course',
+        'curriculum_day__order',
+        'order',
+    ]
+
+    readonly_fields = [
+        'show_duration',
+        'show_file_size',
+    ]
+    
+    actions = ['recalculate_duration']
+
+    fieldsets = (
+        ('Basic Information', {
+            'fields': (
+                'curriculum_day',
+                'title',
+                'description',
+                'order',
+                'is_free',
+            )
+        }),
+        ('Video Sources', {
+            'fields': (
+                'video_url',
+                'video_file',
+                'thumbnail',
+            ),
+            'description': 'Add YouTube/Vimeo URL OR upload a video file.',
+        }),
+        ('Tools', {
+            'fields': ('tools_needed',),
+        }),
+        ('Auto Generated Info', {
+            'fields': (
+                'show_duration',
+                'show_file_size',
+            ),
+            'classes': ('collapse',),
+        }),
+    )
+
+    # -----------------------------
+    # Custom Columns
+    # -----------------------------
+    def get_course(self, obj):
+        return obj.curriculum_day.course.title
+
+    get_course.short_description = 'Course'
+    get_course.admin_order_field = 'curriculum_day__course'
+
+    def get_day(self, obj):
+        return f"Day {obj.curriculum_day.day_number}"
+
+    get_day.short_description = 'Day'
+    get_day.admin_order_field = 'curriculum_day__day_number'
+
+    def show_duration(self, obj):
+        if obj.duration:
+            return obj.duration_display
+        return "N/A"
+
+    show_duration.short_description = 'Duration'
+
+    def show_file_size(self, obj):
+        if obj.video_file:
+            return f"{obj.file_size} MB"
+        return "N/A"
+
+    show_file_size.short_description = 'File Size'
+
+    def has_file(self, obj):
+        return bool(obj.video_file)
+
+    has_file.boolean = True
+    has_file.short_description = 'File'
+    
+    @admin.action(description="Recalculate duration for selected videos")
+    def recalculate_duration(self, request, queryset):
+        """Recalculate duration for selected videos"""
+        import subprocess
+        import json
+        import cloudinary.api
+        from datetime import timedelta
+        
+        updated = 0
+        failed = 0
+        
+        for video in queryset.filter(video_file__isnull=False):
+            try:
+                video_url = str(video.video_file)
+                
+                # Check if Cloudinary video
+                if 'cloudinary' in video_url.lower() or not hasattr(video.video_file, 'path'):
+                    # Cloudinary video
+                    public_id = video.video_file.name.rsplit(".", 1)[0]
+                    
+                    try:
+                        resource = cloudinary.api.resource(
+                            public_id,
+                            resource_type="video"
+                        )
+                        
+                        seconds = int(resource.get("duration", 0))
+                        video.duration = timedelta(seconds=seconds)
+                        video.save()
+                        updated += 1
+                    except Exception as e:
+                        print(f"Cloudinary error for {video.title}: {e}")
+                        failed += 1
+                else:
+                    # Local video file
+                    video_path = video.video_file.path
+                    
+                    cmd = [
+                        'ffprobe',
+                        '-v', 'quiet',
+                        '-print_format', 'json',
+                        '-show_format',
+                        video_path
+                    ]
+                    
+                    result = subprocess.run(cmd, capture_output=True, text=True)
+                    
+                    if result.returncode == 0:
+                        data = json.loads(result.stdout)
+                        duration_seconds = float(data['format']['duration'])
+                        video.duration = timedelta(seconds=int(duration_seconds))
+                        video.save()
+                        updated += 1
+                    else:
+                        failed += 1
+                        
+            except Exception as e:
+                print(f"Error for {video.title}: {e}")
+                failed += 1
+        
+        self.message_user(
+            request,
+            f"Successfully updated {updated} videos. Failed: {failed}"
+        )
+
+
+
+# =====================================================
+# COURSE ADMIN (OPTIONAL INLINE)
+# =====================================================
+from django.contrib import admin
+from .models import Course, CurriculumDay
+
+
+class CurriculumDayInline(admin.TabularInline):
+    model = CurriculumDay
+    extra = 0
+    ordering = ('order', 'day_number')
+    fields = (
+        'day_number',
+        'title',
+        'is_free',
+        'order',
+    )
+
+
+
+# ============================
+# CURRICULUM DAY ADMIN
+# ============================
+# @admin.register(CurriculumDay)
+# class CurriculumDayAdmin(admin.ModelAdmin):
+#     list_display = ['course', 'day_number', 'title', 'is_free', 'order', 'video_count']
+#     list_filter = ['course', 'is_free']
+#     search_fields = ['course__title', 'title']
+#     inlines = [VideoInline]
+#     ordering = ['course', 'order', 'day_number']
+    
+#     def video_count(self, obj):
+#         return obj.videos.count()
+#     video_count.short_description = 'Videos'
 
 
 # ============================
 # VIDEO ADMIN
 # ============================
-@admin.register(Video)
-class VideoAdmin(admin.ModelAdmin):
-    list_display = ['title', 'curriculum_day', 'duration', 'is_free', 'order']
-    list_filter = ['curriculum_day__course', 'is_free']
-    search_fields = ['title', 'description']
-    ordering = ['curriculum_day', 'order']
-    filter_horizontal = ['tools_needed']
+# @admin.register(Video)
+# class VideoAdmin(admin.ModelAdmin):
+#     list_display = ['title', 'curriculum_day', 'duration', 'is_free', 'order']
+#     list_filter = ['curriculum_day__course', 'is_free']
+#     search_fields = ['title', 'description']
+#     ordering = ['curriculum_day', 'order']
+#     filter_horizontal = ['tools_needed']
     
-    fieldsets = (
-        ('Video Information', {
-            'fields': ('curriculum_day', 'title', 'description')
-        }),
-        ('Video Source', {
-            'fields': ('video_url', 'video_file', 'thumbnail')
-        }),
-        ('Settings', {
-            'fields': ('duration', 'order', 'is_free')
-        }),
-    )
+#     fieldsets = (
+#         ('Video Information', {
+#             'fields': ('curriculum_day', 'title', 'description')
+#         }),
+#         ('Video Source', {
+#             'fields': ('video_url', 'video_file', 'thumbnail')
+#         }),
+#         ('Settings', {
+#             'fields': ('duration', 'order', 'is_free')
+#         }),
+#     )
 
 
 

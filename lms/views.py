@@ -59,14 +59,14 @@ def home(request):
     if hasattr(Course, 'is_featured'):
         featured_courses = featured_courses.filter(is_featured=True)
     
-    featured_courses = featured_courses.order_by('-created_at')[:8]
+    featured_courses = featured_courses.order_by('-created_at')[:16]
     
-    if featured_courses.count() < 8:
+    if featured_courses.count() < 16:
         additional_courses = Course.objects.filter(
             is_active=True
         ).exclude(
             id__in=[c.id for c in featured_courses]
-        ).order_by('-created_at')[:8 - featured_courses.count()]
+        ).order_by('-created_at')[:16 - featured_courses.count()]
         courses = list(featured_courses) + list(additional_courses)
     else:
         courses = featured_courses
@@ -648,64 +648,6 @@ def my_courses(request):
     }
     
     return render(request, 'lms/my_courses.html', context)
-
-# @login_required
-# def my_courses(request):
-#     """Display user's purchased and enrolled courses with first video, progress, and certificate"""
-
-#     # Purchases
-#     purchases = Purchase.objects.filter(
-#         user=request.user,
-#         payment_status='completed'
-#     ).select_related('course__category').prefetch_related(
-#         'course__instructors',
-#         'course__curriculum_days__videos'
-#     ).order_by('-purchased_at')
-
-#     # Legacy enrollments
-#     enrollments = CourseEnrollment.objects.filter(
-#         user=request.user
-#     ).select_related('course__category').prefetch_related(
-#         'course__instructors',
-#         'course__curriculum_days__videos'
-#     ).order_by('-enrolled_at')
-
-#     # Filter out enrollments that are already purchased
-#     purchased_course_ids = [p.course.id for p in purchases]
-#     enrollments = [e for e in enrollments if e.course.id not in purchased_course_ids]
-
-#     # Collect all course IDs for bulk fetching progress and certificates
-#     all_courses = [p.course for p in purchases] + [e.course for e in enrollments]
-#     course_ids = [c.id for c in all_courses]
-
-#     # Bulk fetch progress and certificates
-#     progress_map = {cp.course_id: cp for cp in CourseProgress.objects.filter(user=request.user, course_id__in=course_ids)}
-#     certificate_map = {cert.course_id: cert for cert in Certificate.objects.filter(user=request.user, course_id__in=course_ids)}
-
-#     # Assign first video, progress, certificate
-#     def enhance_course(obj):
-#         first_video = None
-#         for day in obj.course.curriculum_days.all().order_by('order', 'day_number'):
-#             videos = day.videos.all().order_by('order', 'id')
-#             if videos.exists():
-#                 first_video = videos.first()
-#                 break
-#         obj.first_video = first_video
-#         obj.progress = progress_map.get(obj.course.id)
-#         obj.certificate = certificate_map.get(obj.course.id)
-
-#     for p in purchases:
-#         enhance_course(p)
-#     for e in enrollments:
-#         enhance_course(e)
-
-#     context = {
-#         'purchases': purchases,
-#         'enrollments': enrollments,
-#         'title': 'My Courses',
-#     }
-
-#     return render(request, 'lms/my_courses.html', context)
 
 
 
@@ -1989,7 +1931,10 @@ def download_certificate(request, certificate_id):
         
         # Return PDF
         response = HttpResponse(pdf_bytes, content_type='application/pdf')
-        response['Content-Disposition'] = f'attachment; filename="certificate_{certificate_id}.pdf"'
+        student_name = certificate.user.get_full_name() or certificate.user.email
+        safe_name = "".join(c if c.isalnum() or c=='_' else '_' for c in student_name.replace(' ', '_'))
+
+        response['Content-Disposition'] = f'attachment; filename="{safe_name}_Certificate.pdf"'
         return response
         
     except Exception as e:

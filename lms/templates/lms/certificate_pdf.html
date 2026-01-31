@@ -1,328 +1,286 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Course Certificate</title>
-    
+<meta charset="UTF-8">
+<title>Certificate</title>
 
 <style>
-    .certificate-container {
-        max-width: 900px;
-        margin: 3rem auto;
-        padding: 2rem;
-    }
+/* =========================
+   A4 PRINT SETUP (CRITICAL)
+   ========================= */
+@page {
+    size: A4;
+    margin: 0;
+}
 
-    .certificate {
+body {
+    margin: 0;
+    padding: 0;
+    background: #f3f4f6;
+    font-family: Arial, sans-serif;
+}
+
+/* =========================
+   PAGE CONTAINER
+   ========================= */
+.certificate-container {
+    width: 210mm;
+    height: 297mm;
+    margin: auto;
+    padding: 20mm;
+    box-sizing: border-box;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+/* =========================
+   CERTIFICATE CARD
+   ========================= */
+.certificate {
+    width: 100%;
+    height: 100%;
+    background: white;
+    border: 12px solid #fbbf24;
+    border-radius: 18px;
+    padding: 24mm;
+    box-sizing: border-box;
+    position: relative;
+    overflow: hidden;
+    page-break-inside: avoid;
+}
+
+/* Decorative pattern (NO overflow) */
+.certificate::before {
+    content: "";
+    position: absolute;
+    inset: 0;
+    background: repeating-linear-gradient(
+        45deg,
+        transparent,
+        transparent 12px,
+        rgba(251,191,36,0.05) 12px,
+        rgba(251,191,36,0.05) 24px
+    );
+    pointer-events: none;
+}
+
+/* =========================
+   HEADER
+   ========================= */
+.certificate-header {
+    text-align: center;
+}
+
+.certificate-badge {
+    width: 90px;
+    height: 90px;
+    margin: 0 auto 16px;
+    background: linear-gradient(135deg, #fbbf24, #f59e0b);
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 2.5rem;
+}
+
+.certificate-title {
+    font-size: 2.3rem;
+    font-weight: bold;
+    letter-spacing: 2px;
+    margin: 8px 0;
+}
+
+.certificate-subtitle {
+    font-size: 1.1rem;
+    color: #555;
+}
+
+/* =========================
+   BODY
+   ========================= */
+.certificate-body {
+    text-align: center;
+    margin-top: 40px;
+}
+
+.recipient-name {
+    font-size: 2.4rem;
+    font-weight: bold;
+    color: #22c55e;
+    margin: 24px 0;
+    border-bottom: 2px solid #fbbf24;
+    display: inline-block;
+    padding-bottom: 8px;
+}
+
+.course-info {
+    font-size: 1.2rem;
+    line-height: 1.8;
+}
+
+.course-name {
+    font-size: 1.5rem;
+    font-weight: bold;
+    color: #667eea;
+}
+
+/* =========================
+   FOOTER
+   ========================= */
+.certificate-footer {
+    margin-top: 45mm;
+    display: flex;
+    justify-content: space-between;
+    text-align: center;
+}
+
+.signature-block {
+    width: 40%;
+}
+
+.signature-line {
+    border-top: 2px solid #000;
+    margin-bottom: 6px;
+}
+
+.signature-label {
+    font-size: 0.9rem;
+    color: #555;
+}
+
+/* =========================
+   META
+   ========================= */
+.certificate-meta {
+    text-align: center;
+    margin-top: 28px;
+    font-size: 0.9rem;
+    color: #666;
+}
+
+/* =========================
+   DOWNLOAD BUTTON
+   ========================= */
+.actions {
+    text-align: center;
+    margin: 20px 0;
+}
+
+.btn-download {
+    background: #22c55e;
+    color: #fff;
+    border: none;
+    padding: 12px 28px;
+    font-size: 1rem;
+    border-radius: 8px;
+    cursor: pointer;
+}
+
+.btn-download:hover {
+    background: #16a34a;
+}
+
+/* =========================
+   PRINT FIX
+   ========================= */
+@media print {
+    body {
         background: white;
-        border: 15px solid #fbbf24;
-        border-radius: 20px;
-        padding: 3rem;
-        box-shadow: 0 10px 40px rgba(0,0,0,0.1);
-        position: relative;
-        overflow: hidden;
-    }
-
-    .certificate::before {
-        content: '';
-        position: absolute;
-        top: -50%;
-        left: -50%;
-        width: 200%;
-        height: 200%;
-        background: repeating-linear-gradient(
-            45deg,
-            transparent,
-            transparent 10px,
-            rgba(251, 191, 36, 0.05) 10px,
-            rgba(251, 191, 36, 0.05) 20px
-        );
-        pointer-events: none;
-    }
-
-    .certificate-header {
-        text-align: center;
-        margin-bottom: 2rem;
-        position: relative;
-    }
-
-    .certificate-badge {
-        width: 100px;
-        height: 100px;
-        margin: 0 auto 1rem;
-        background: linear-gradient(135deg, #fbbf24 0%, #f59e0b 100%);
-        border-radius: 50%;
-        display: flex;
-        align-items: center;
-        justify-content: center;
-        font-size: 3rem;
-        box-shadow: 0 5px 20px rgba(251, 191, 36, 0.3);
-    }
-
-    .certificate-title {
-        font-size: 2.5rem;
-        font-weight: bold;
-        color: #333;
-        margin-bottom: 0.5rem;
-        text-transform: uppercase;
-        letter-spacing: 2px;
-    }
-
-    .certificate-subtitle {
-        font-size: 1.2rem;
-        color: #666;
-        font-style: italic;
-    }
-
-    .certificate-body {
-        text-align: center;
-        margin: 3rem 0;
-        position: relative;
-    }
-
-    .awarded-to {
-        font-size: 1rem;
-        color: #666;
-        margin-bottom: 1rem;
-    }
-
-    .recipient-name {
-        font-size: 2.5rem;
-        font-weight: bold;
-        color: #22c55e;
-        margin-bottom: 2rem;
-        padding-bottom: 1rem;
-        border-bottom: 2px solid #fbbf24;
-    }
-
-    .course-info {
-        font-size: 1.2rem;
-        color: #333;
-        line-height: 1.8;
-        margin-bottom: 2rem;
-    }
-
-    .course-name {
-        font-weight: bold;
-        color: #667eea;
-        font-size: 1.5rem;
-    }
-
-    .certificate-footer {
-        display: flex;
-        justify-content: space-between;
-        margin-top: 3rem;
-        padding-top: 2rem;
-        border-top: 2px solid #e5e7eb;
-        position: relative;
-    }
-
-    .signature-block {
-        text-align: center;
-        flex: 1;
-    }
-
-    .signature-line {
-        border-top: 2px solid #333;
-        margin-bottom: 0.5rem;
-        width: 200px;
-        margin: 0 auto 0.5rem;
-    }
-
-    .signature-label {
-        font-size: 0.9rem;
-        color: #666;
-    }
-
-    .certificate-meta {
-        text-align: center;
-        margin-top: 2rem;
-        padding: 1rem;
-        background: #f9fafb;
-        border-radius: 8px;
-    }
-
-    .meta-item {
-        display: inline-block;
-        margin: 0 1.5rem;
-        color: #666;
-        font-size: 0.9rem;
     }
 
     .actions {
-        text-align: center;
-        margin-top: 2rem;
-        display: flex;
-        gap: 1rem;
-        justify-content: center;
-        flex-wrap: wrap;
+        display: none;
     }
 
-    .btn-download,
-    .btn-share,
-    .btn-back {
-        color: white;
-        padding: 1rem 2.5rem;
-        border-radius: 8px;
-        text-decoration: none;
-        display: inline-flex;
-        align-items: center;
-        gap: 0.5rem;
-        transition: all 0.3s ease;
-        font-weight: 500;
-        border: none;
-        cursor: pointer;
+    .certificate::before {
+        display: none;
     }
-
-    .btn-download {
-        background: #22c55e;
-    }
-
-    .btn-download:hover {
-        background: #16a34a;
-        transform: translateY(-2px);
-        box-shadow: 0 4px 12px rgba(34, 197, 94, 0.3);
-    }
-
-    .btn-share {
-        background: #3b82f6;
-    }
-
-    .btn-share:hover {
-        background: #2563eb;
-        transform: translateY(-2px);
-        box-shadow: 0 4px 12px rgba(59, 130, 246, 0.3);
-    }
-
-    .btn-back {
-        background: #6b7280;
-    }
-
-    .btn-back:hover {
-        background: #4b5563;
-        transform: translateY(-2px);
-    }
-
-    /* Loading spinner for download */
-    .btn-download.loading {
-        pointer-events: none;
-        opacity: 0.7;
-    }
-
-    .btn-download.loading::after {
-        content: '';
-        width: 16px;
-        height: 16px;
-        border: 2px solid #fff;
-        border-top-color: transparent;
-        border-radius: 50%;
-        display: inline-block;
-        animation: spin 0.6s linear infinite;
-        margin-left: 0.5rem;
-    }
-
-    @keyframes spin {
-        to { transform: rotate(360deg); }
-    }
-
-    @media print {
-        .actions {
-            display: none;
-        }
-        
-        body {
-            background: white;
-        }
-        
-        .certificate-container {
-            margin: 0;
-            padding: 0;
-        }
-    }
-
-    @media (max-width: 768px) {
-        .certificate {
-            padding: 2rem 1rem;
-        }
-        
-        .certificate-title {
-            font-size: 1.8rem;
-        }
-        
-        .recipient-name {
-            font-size: 1.8rem;
-        }
-        
-        .certificate-footer {
-            flex-direction: column;
-            gap: 2rem;
-        }
-        
-        .actions {
-            flex-direction: column;
-        }
-        
-        .btn-download,
-        .btn-share,
-        .btn-back {
-            width: 100%;
-            justify-content: center;
-        }
-
-        .meta-item {
-            display: block;
-            margin: 0.5rem 0;
-        }
-    }
+}
 </style>
 </head>
+
 <body>
+
 <div class="certificate-container">
     <div class="certificate">
+
+        <!-- HEADER -->
         <div class="certificate-header">
             <div class="certificate-badge">🏆</div>
             <h1 class="certificate-title">Certificate of Completion</h1>
             <p class="certificate-subtitle">This is to certify that</p>
         </div>
 
+        <!-- BODY -->
         <div class="certificate-body">
             <div class="recipient-name">
                 {{ certificate.user.get_full_name|default:certificate.user.email }}
             </div>
-            
+
             <div class="course-info">
-                has successfully completed the course
-                <br>
-                <span class="course-name">{{ certificate.course.title }}</span>
-                <br>
-                and has demonstrated proficiency in the subject matter
+                has successfully completed the course<br>
+                <span class="course-name">{{ certificate.course.title }}</span><br>
+                and has demonstrated proficiency in the subject matter.
             </div>
         </div>
 
+        <!-- FOOTER -->
         <div class="certificate-footer">
             <div class="signature-block">
                 <div class="signature-line"></div>
-                <p class="signature-label">Instructor Signature</p>
+                <div class="signature-label">Instructor Signature</div>
             </div>
-            
+
             <div class="signature-block">
                 <div class="signature-line"></div>
-                <p class="signature-label">Director Signature</p>
+                <div class="signature-label">Director Signature</div>
             </div>
         </div>
 
+        <!-- META -->
         <div class="certificate-meta">
-            <span class="meta-item">
-                <strong>Certificate ID:</strong> {{ certificate.certificate_id }}
-            </span>
-            <span class="meta-item">
-                <strong>Issue Date:</strong> {{ certificate.issue_date|date:"F d, Y" }}
-            </span>
+            Certificate ID: {{ certificate.certificate_id }} |
+            Issued on: {{ certificate.issue_date|date:"F d, Y" }}
         </div>
-    </div>
 
- 
+    </div>
 </div>
+
+<!-- DOWNLOAD -->
+<div class="actions">
+    <button class="btn-download" onclick="downloadCertificate()">
+        Download Certificate
+    </button>
+</div>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js"></script>
+<script>
+function downloadCertificate() {
+    // Get student name, fallback to email
+    const studentName = "{{ certificate.user.get_full_name|default:certificate.user.email }}"
+        .replace(/\s+/g, "_")          // replace spaces with underscores
+        .replace(/[^a-zA-Z0-9_]/g, ""); // remove special characters
+
+    const element = document.querySelector(".certificate");
+
+    // PDF options
+    const opt = {
+        margin:       [0, 0, 0, 0],
+        filename:     studentName + "_Certificate.pdf",
+        image:        { type: 'jpeg', quality: 1.0 },
+        html2canvas:  { scale: 2, scrollY: 0 },
+        jsPDF:        { unit: 'mm', format: 'a4', orientation: 'portrait' }
+    };
+
+    // Generate PDF
+    html2pdf().set(opt).from(element).save();
+}
+</script>
+
+
 
 </body>
 </html>
+
+

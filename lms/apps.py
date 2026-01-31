@@ -5,6 +5,6 @@ class LmsConfig(AppConfig):
     default_auto_field = 'django.db.models.BigAutoField'
     name = 'lms'
     
-    # Remove or comment out the ready method if you don't have signals
-    # def ready(self):
-    #     import lms.signals
+    def ready(self):
+        # Import signals to register them
+        import lms.signals  # Replace with your actual app name
