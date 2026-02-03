@@ -1157,9 +1157,12 @@
         <span class="video-duration">{{ video.duration }}</span>
 
         {% if video.is_accessible %}
-            <button class="video-action" onclick="playVideo({{ video.id }})">
-                Play
-            </button>
+            <button class="video-action" onclick="playVideo({{ video.id }})" aria-label="Play video">
+    <svg width="18" height="18" viewBox="0 0 24 24" fill="currentColor">
+        <path d="M8 5v14l11-7z"/>
+    </svg>
+</button>
+
         {% else %}
             <button class="video-action locked" disabled>
                 Locked

@@ -544,27 +544,19 @@ class CurriculumDay(models.Model):
         unique_together = ['course', 'day_number']
 
 
-
-
-
+# =================================================================
+# REPLACE YOUR Video MODEL WITH THIS IN models.py
+# =================================================================
 
 from django.db import models
-from django.conf import settings
-from django.core.validators import FileExtensionValidator
+from cloudinary.models import CloudinaryField
 from datetime import timedelta
-import cloudinary.api
-from cloudinary.models import CloudinaryField 
 import subprocess
 import json
-import tempfile
-import os
-
-from django.db import models
-from datetime import timedelta
 
 
 class Video(models.Model):
-    """Model for course videos"""
+    """Model for course videos with automatic duration extraction"""
 
     curriculum_day = models.ForeignKey(
         "CurriculumDay",
@@ -578,183 +570,187 @@ class Video(models.Model):
     # ----------------------------------
     # VIDEO SOURCES
     # ----------------------------------
-
-    # External video (YouTube / Vimeo)
     video_url = models.URLField(
         blank=True,
         help_text="YouTube / Vimeo / external video URL"
     )
 
-    # Uploaded video (Cloudinary / local)
     video_file = CloudinaryField(
-    'video',
-    resource_type='video',
-    blank=True,
-    null=True,
-    folder='course_videos'
-)
+        'video',
+        resource_type='video',
+        blank=True,
+        null=True,
+        folder='course_videos'
+    )
 
     # ----------------------------------
     # AUTO-GENERATED FIELDS
     # ----------------------------------
-
     duration = models.DurationField(
         blank=True,
         null=True,
-        editable=False,
         help_text="Automatically calculated video duration"
     )
 
     thumbnail = CloudinaryField(
-    'image',
-    resource_type='image',
-    blank=True,
-    null=True,
-    folder='video_thumbnails'
-)
+        'image',
+        resource_type='image',
+        blank=True,
+        null=True,
+        folder='video_thumbnails'
+    )
 
     # ----------------------------------
     # META
     # ----------------------------------
-
     order = models.IntegerField(default=0)
     is_free = models.BooleanField(default=False)
 
-
-    
     tools_needed = models.ManyToManyField(
-        Tool,
+        'Tool',
         blank=True,
         related_name="videos",
         help_text="Tools required for this video"
     )
 
-
     def __str__(self):
         return f"{self.curriculum_day} - {self.title}"
 
     # ==================================================
-    # AUTO DURATION (LOCAL FILES ONLY – CLOUDINARY SAFE)
+    # AUTO DURATION EXTRACTION (FFprobe on Cloudinary URL)
     # ==================================================
     def save(self, *args, **kwargs):
-     """
-     Auto-calculate duration for both Cloudinary and local video files
-     """
-     if self.video_file and not self.duration:
-        # Import at the start
-        import subprocess
-        import json
-        
-        try:
-            video_url = str(self.video_file)
+        """
+        Auto-extract duration using FFprobe on Cloudinary URL
+        """
+        # Only extract if we have a video file but no duration
+        if self.video_file and not self.duration:
+            print(f"\n🔍 Extracting duration for: {self.title}")
+            extracted_duration = self.extract_duration_from_cloudinary()
             
-            # Check if it's a Cloudinary video
-            if 'cloudinary' in video_url.lower() or not hasattr(self.video_file, 'path'):
-                # For Cloudinary videos - try API first, then download if needed
-                try:
-                    import cloudinary.api
-                    
-                    # Try to get public_id
-                    if hasattr(self.video_file, 'public_id'):
-                        public_id = self.video_file.public_id
-                    else:
-                        # Extract from string/URL
-                        file_str = str(self.video_file)
-                        parts = file_str.split('/')
-                        if 'course_videos' in parts:
-                            idx = parts.index('course_videos')
-                            filename = parts[idx + 1].split('.')[0]
-                            public_id = f"course_videos/{filename}"
-                        else:
-                            public_id = None
-                    
-                    # Try getting duration from Cloudinary API
-                    if public_id:
-                        resource = cloudinary.api.resource(public_id, resource_type="video")
-                        duration_from_api = resource.get("duration")
-                        
-                        if duration_from_api and duration_from_api > 0:
-                            self.duration = timedelta(seconds=int(duration_from_api))
-                            print(f"Duration from Cloudinary API: {duration_from_api}s")
-                        else:
-                            # API returned None or 0, download and use ffprobe
-                            raise Exception("No duration from API, trying download")
-                    else:
-                        raise Exception("Could not extract public_id")
-                        
-                except Exception as api_error:
-                    # Fallback: Download video and use ffprobe
-                    print(f"API failed ({api_error}), downloading video...")
-                    
-                    import requests
-                    import tempfile
-                    import os
-                    
-                    # Get video URL
-                    if hasattr(self.video_file, 'url'):
-                        download_url = self.video_file.url
-                    else:
-                        download_url = str(self.video_file)
-                    
-                    # Download to temp file
-                    response = requests.get(download_url, stream=True, timeout=60)
-                    
-                    with tempfile.NamedTemporaryFile(delete=False, suffix='.mp4') as tmp_file:
-                        for chunk in response.iter_content(chunk_size=8192):
-                            tmp_file.write(chunk)
-                        tmp_path = tmp_file.name
-                    
-                    # Use ffprobe on downloaded file
-                    cmd = [
-                        'ffprobe',
-                        '-v', 'quiet',
-                        '-print_format', 'json',
-                        '-show_format',
-                        tmp_path
-                    ]
-                    
-                    result = subprocess.run(cmd, capture_output=True, text=True)
-                    
-                    if result.returncode == 0:
-                        data = json.loads(result.stdout)
-                        duration_seconds = float(data['format']['duration'])
-                        self.duration = timedelta(seconds=int(duration_seconds))
-                        print(f"Duration from downloaded file: {duration_seconds}s")
-                    
-                    # Clean up temp file
-                    try:
-                        os.unlink(tmp_path)
-                    except:
-                        pass
-                    
+            if extracted_duration:
+                self.duration = extracted_duration
+                print(f"✅ Duration set: {self.duration_display}")
             else:
-                # For local video files - use ffprobe directly
-                video_path = self.video_file.path
+                print(f"⚠️ Could not extract duration")
+        
+        super().save(*args, **kwargs)
+
+    def extract_duration_from_cloudinary(self):
+        """
+        Extract video duration using FFprobe on Cloudinary URL
+        No download needed - reads directly from URL
+        """
+        if not self.video_file:
+            return None
+
+        try:
+            # Get video URL
+            if hasattr(self.video_file, 'url'):
+                video_url = self.video_file.url
+            else:
+                video_url = str(self.video_file)
+            
+            # Ensure HTTPS
+            if video_url.startswith('http://'):
+                video_url = video_url.replace('http://', 'https://')
+            
+            print(f"🎬 Running FFprobe on: {video_url[:80]}...")
+            
+            # Run FFprobe
+            cmd = [
+                'ffprobe',
+                '-v', 'quiet',
+                '-print_format', 'json',
+                '-show_format',
+                video_url
+            ]
+            
+            result = subprocess.run(
+                cmd,
+                capture_output=True,
+                text=True,
+                timeout=30
+            )
+            
+            if result.returncode == 0:
+                data = json.loads(result.stdout)
+                duration_seconds = float(data['format']['duration'])
                 
-                cmd = [
-                    'ffprobe',
-                    '-v', 'quiet',
-                    '-print_format', 'json',
-                    '-show_format',
-                    video_path
-                ]
+                if duration_seconds > 0:
+                    return timedelta(seconds=duration_seconds)
+                else:
+                    print(f"⚠️ Duration is 0")
+                    return None
+            else:
+                print(f"⚠️ FFprobe failed: {result.stderr}")
+                return None
                 
-                result = subprocess.run(cmd, capture_output=True, text=True)
-                
-                if result.returncode == 0:
-                    data = json.loads(result.stdout)
-                    duration_seconds = float(data['format']['duration'])
-                    self.duration = timedelta(seconds=int(duration_seconds))
-                    print(f"Duration from local file: {duration_seconds}s")
-                    
+        except subprocess.TimeoutExpired:
+            print(f"⚠️ FFprobe timeout")
+            return None
+        except FileNotFoundError:
+            print(f"⚠️ FFprobe not installed")
+            return None
         except Exception as e:
-            print(f"Error calculating video duration: {e}")
-
-     super().save(*args, **kwargs)
-
+            print(f"⚠️ Error: {e}")
+            return None
 
     # ==================================================
-    # VIDEO URL HELPERS
+    # MANUAL REFRESH FOR EXISTING VIDEOS
+    # ==================================================
+    def refresh_duration(self):
+        """
+        Manually refresh duration (for admin action or management command)
+        """
+        if not self.video_file:
+            print(f"❌ No video file for: {self.title}")
+            return False
+        
+        print(f"\n🔄 Refreshing duration for: {self.title}")
+        
+        # Force re-extraction
+        self.duration = None
+        extracted = self.extract_duration_from_cloudinary()
+        
+        if extracted:
+            self.duration = extracted
+            self.save(update_fields=['duration'])
+            print(f"✅ Duration refreshed: {self.duration_display}")
+            return True
+        else:
+            print(f"❌ Could not refresh duration")
+            return False
+
+    # ==================================================
+    # DISPLAY HELPERS
+    # ==================================================
+    @property
+    def duration_display(self):
+        """Return human-readable duration (HH:MM:SS or MM:SS or SSs)"""
+        if not self.duration:
+            return "0:00"
+        
+        total_seconds = int(self.duration.total_seconds())
+        h, remainder = divmod(total_seconds, 3600)
+        m, s = divmod(remainder, 60)
+        
+        if h > 0:
+            return f"{h}:{m:02d}:{s:02d}"
+        elif m > 0:
+            return f"{m}:{s:02d}"
+        else:
+            return f"{s}s"
+
+    @property
+    def file_size(self):
+        """Video file size in MB"""
+        if self.video_file and hasattr(self.video_file, "size"):
+            return round(self.video_file.size / (1024 * 1024), 2)
+        return 0
+
+    # ==================================================
+    # VIDEO URL HELPERS (YouTube/Vimeo)
     # ==================================================
     def get_youtube_id(self):
         if not self.video_url:
@@ -785,36 +781,6 @@ class Video(models.Model):
 
         return self.video_url
 
-    # ==================================================
-    # DISPLAY HELPERS (ADMIN / TEMPLATE SAFE)
-    # ==================================================
-    @property
-    def duration_display(self):
-     """Return human-readable HH:MM:SS or MM:SS or SSs"""
-    
-     if not self.duration:
-        return "0:00"
-    
-     total_seconds = int(self.duration.total_seconds())
-     h, remainder = divmod(total_seconds, 3600)
-     m, s = divmod(remainder, 60)
-    
-     if h > 0:
-        return f"{h}:{m:02d}:{s:02d}"
-     elif m > 0:
-        return f"{m}:{s:02d}"
-     else:
-        # For videos under 1 minute, show seconds
-        return f"{s}s"
-
-    
-    @property
-    def file_size(self):
-        """Video file size in MB"""
-        if self.video_file and hasattr(self.video_file, "size"):
-            return round(self.video_file.size / (1024 * 1024), 2)
-        return 0
-
     @property
     def is_youtube_video(self):
         return bool(self.get_youtube_id())
@@ -831,6 +797,7 @@ class Video(models.Model):
     # ACCESS CONTROL
     # ==================================================
     def is_accessible_by(self, user):
+        """Check if user can access this video"""
         from .models import Purchase
 
         # Free video or free day
@@ -855,6 +822,316 @@ class Video(models.Model):
         verbose_name = "Video"
         verbose_name_plural = "Videos"
         ordering = ["order", "id"]
+
+
+
+# from django.db import models
+# from django.conf import settings
+# from django.core.validators import FileExtensionValidator
+# from datetime import timedelta
+# import cloudinary.api
+# from cloudinary.models import CloudinaryField 
+# import subprocess
+# import json
+# import tempfile
+# import os
+
+# from django.db import models
+# from datetime import timedelta
+
+
+# class Video(models.Model):
+#     """Model for course videos"""
+
+#     curriculum_day = models.ForeignKey(
+#         "CurriculumDay",
+#         on_delete=models.CASCADE,
+#         related_name="videos"
+#     )
+
+#     title = models.CharField(max_length=200)
+#     description = models.TextField(blank=True)
+
+#     # ----------------------------------
+#     # VIDEO SOURCES
+#     # ----------------------------------
+
+#     # External video (YouTube / Vimeo)
+#     video_url = models.URLField(
+#         blank=True,
+#         help_text="YouTube / Vimeo / external video URL"
+#     )
+
+#     # Uploaded video (Cloudinary / local)
+#     video_file = CloudinaryField(
+#     'video',
+#     resource_type='video',
+#     blank=True,
+#     null=True,
+#     folder='course_videos'
+# )
+
+#     # ----------------------------------
+#     # AUTO-GENERATED FIELDS
+#     # ----------------------------------
+
+#     duration = models.DurationField(
+#         blank=True,
+#         null=True,
+#         editable=False,
+#         help_text="Automatically calculated video duration"
+#     )
+
+#     thumbnail = CloudinaryField(
+#     'image',
+#     resource_type='image',
+#     blank=True,
+#     null=True,
+#     folder='video_thumbnails'
+# )
+
+#     # ----------------------------------
+#     # META
+#     # ----------------------------------
+
+#     order = models.IntegerField(default=0)
+#     is_free = models.BooleanField(default=False)
+
+
+    
+#     tools_needed = models.ManyToManyField(
+#         Tool,
+#         blank=True,
+#         related_name="videos",
+#         help_text="Tools required for this video"
+#     )
+
+
+#     def __str__(self):
+#         return f"{self.curriculum_day} - {self.title}"
+
+#     # ==================================================
+#     # AUTO DURATION (LOCAL FILES ONLY – CLOUDINARY SAFE)
+#     # ==================================================
+#     def save(self, *args, **kwargs):
+#      """
+#      Auto-calculate duration for both Cloudinary and local video files
+#      """
+#      if self.video_file and not self.duration:
+#         # Import at the start
+#         import subprocess
+#         import json
+        
+#         try:
+#             video_url = str(self.video_file)
+            
+#             # Check if it's a Cloudinary video
+#             if 'cloudinary' in video_url.lower() or not hasattr(self.video_file, 'path'):
+#                 # For Cloudinary videos - try API first, then download if needed
+#                 try:
+#                     import cloudinary.api
+                    
+#                     # Try to get public_id
+#                     if hasattr(self.video_file, 'public_id'):
+#                         public_id = self.video_file.public_id
+#                     else:
+#                         # Extract from string/URL
+#                         file_str = str(self.video_file)
+#                         parts = file_str.split('/')
+#                         if 'course_videos' in parts:
+#                             idx = parts.index('course_videos')
+#                             filename = parts[idx + 1].split('.')[0]
+#                             public_id = f"course_videos/{filename}"
+#                         else:
+#                             public_id = None
+                    
+#                     # Try getting duration from Cloudinary API
+#                     if public_id:
+#                         resource = cloudinary.api.resource(public_id, resource_type="video")
+#                         duration_from_api = resource.get("duration")
+                        
+#                         if duration_from_api and duration_from_api > 0:
+#                             self.duration = timedelta(seconds=int(duration_from_api))
+#                             print(f"Duration from Cloudinary API: {duration_from_api}s")
+#                         else:
+#                             # API returned None or 0, download and use ffprobe
+#                             raise Exception("No duration from API, trying download")
+#                     else:
+#                         raise Exception("Could not extract public_id")
+                        
+#                 except Exception as api_error:
+#                     # Fallback: Download video and use ffprobe
+#                     print(f"API failed ({api_error}), downloading video...")
+                    
+#                     import requests
+#                     import tempfile
+#                     import os
+                    
+#                     # Get video URL
+#                     if hasattr(self.video_file, 'url'):
+#                         download_url = self.video_file.url
+#                     else:
+#                         download_url = str(self.video_file)
+                    
+#                     # Download to temp file
+#                     response = requests.get(download_url, stream=True, timeout=60)
+                    
+#                     with tempfile.NamedTemporaryFile(delete=False, suffix='.mp4') as tmp_file:
+#                         for chunk in response.iter_content(chunk_size=8192):
+#                             tmp_file.write(chunk)
+#                         tmp_path = tmp_file.name
+                    
+#                     # Use ffprobe on downloaded file
+#                     cmd = [
+#                         'ffprobe',
+#                         '-v', 'quiet',
+#                         '-print_format', 'json',
+#                         '-show_format',
+#                         tmp_path
+#                     ]
+                    
+#                     result = subprocess.run(cmd, capture_output=True, text=True)
+                    
+#                     if result.returncode == 0:
+#                         data = json.loads(result.stdout)
+#                         duration_seconds = float(data['format']['duration'])
+#                         self.duration = timedelta(seconds=int(duration_seconds))
+#                         print(f"Duration from downloaded file: {duration_seconds}s")
+                    
+#                     # Clean up temp file
+#                     try:
+#                         os.unlink(tmp_path)
+#                     except:
+#                         pass
+                    
+#             else:
+#                 # For local video files - use ffprobe directly
+#                 video_path = self.video_file.path
+                
+#                 cmd = [
+#                     'ffprobe',
+#                     '-v', 'quiet',
+#                     '-print_format', 'json',
+#                     '-show_format',
+#                     video_path
+#                 ]
+                
+#                 result = subprocess.run(cmd, capture_output=True, text=True)
+                
+#                 if result.returncode == 0:
+#                     data = json.loads(result.stdout)
+#                     duration_seconds = float(data['format']['duration'])
+#                     self.duration = timedelta(seconds=int(duration_seconds))
+#                     print(f"Duration from local file: {duration_seconds}s")
+                    
+#         except Exception as e:
+#             print(f"Error calculating video duration: {e}")
+
+#      super().save(*args, **kwargs)
+
+
+#     # ==================================================
+#     # VIDEO URL HELPERS
+#     # ==================================================
+#     def get_youtube_id(self):
+#         if not self.video_url:
+#             return None
+#         import re
+#         match = re.search(
+#             r"(?:v=|youtu\.be/|embed/|shorts/)([\w\-]{11})",
+#             self.video_url,
+#             re.IGNORECASE
+#         )
+#         return match.group(1) if match else None
+
+#     def get_vimeo_id(self):
+#         if not self.video_url:
+#             return None
+#         import re
+#         match = re.search(r"vimeo\.com\/(\d+)", self.video_url)
+#         return match.group(1) if match else None
+
+#     def get_embed_url(self):
+#         youtube_id = self.get_youtube_id()
+#         if youtube_id:
+#             return f"https://www.youtube.com/embed/{youtube_id}"
+
+#         vimeo_id = self.get_vimeo_id()
+#         if vimeo_id:
+#             return f"https://player.vimeo.com/video/{vimeo_id}"
+
+#         return self.video_url
+
+#     # ==================================================
+#     # DISPLAY HELPERS (ADMIN / TEMPLATE SAFE)
+#     # ==================================================
+#     @property
+#     def duration_display(self):
+#      """Return human-readable HH:MM:SS or MM:SS or SSs"""
+    
+#      if not self.duration:
+#         return "0:00"
+    
+#      total_seconds = int(self.duration.total_seconds())
+#      h, remainder = divmod(total_seconds, 3600)
+#      m, s = divmod(remainder, 60)
+    
+#      if h > 0:
+#         return f"{h}:{m:02d}:{s:02d}"
+#      elif m > 0:
+#         return f"{m}:{s:02d}"
+#      else:
+#         # For videos under 1 minute, show seconds
+#         return f"{s}s"
+
+    
+#     @property
+#     def file_size(self):
+#         """Video file size in MB"""
+#         if self.video_file and hasattr(self.video_file, "size"):
+#             return round(self.video_file.size / (1024 * 1024), 2)
+#         return 0
+
+#     @property
+#     def is_youtube_video(self):
+#         return bool(self.get_youtube_id())
+
+#     @property
+#     def is_vimeo_video(self):
+#         return bool(self.get_vimeo_id())
+
+#     @property
+#     def embed_url(self):
+#         return self.get_embed_url()
+
+#     # ==================================================
+#     # ACCESS CONTROL
+#     # ==================================================
+#     def is_accessible_by(self, user):
+#         from .models import Purchase
+
+#         # Free video or free day
+#         if self.is_free or self.curriculum_day.is_free:
+#             return True
+
+#         # Day 1 is free
+#         if self.curriculum_day.day_number == 1:
+#             return True
+
+#         # Purchased users
+#         if user.is_authenticated:
+#             return Purchase.objects.filter(
+#                 user=user,
+#                 course=self.curriculum_day.course,
+#                 payment_status="completed"
+#             ).exists()
+
+#         return False
+
+#     class Meta:
+#         verbose_name = "Video"
+#         verbose_name_plural = "Videos"
+#         ordering = ["order", "id"]
 
 
 
@@ -889,170 +1166,6 @@ class Video(models.Model):
 
 
 
-# ============================
-# VIDEO
-# ============================
-# from django.db import models
-# from django.conf import settings
-# from .models import CurriculumDay  # Make sure Purchase and CurriculumDay are imported
-
-# class Video(models.Model):
-#     """Model for course videos"""
-#     curriculum_day = models.ForeignKey(
-#         CurriculumDay, 
-#         on_delete=models.CASCADE, 
-#         related_name='videos'
-#     )
-#     title = models.CharField(max_length=200)
-#     description = models.TextField(blank=True)
-#     video_url = models.URLField(help_text="URL to video file or embed link")
-#     video_file = models.FileField(upload_to='course_videos/', blank=True, null=True)
-#     duration = models.CharField(max_length=10, help_text="Format: MM:SS or HH:MM:SS")
-#     thumbnail = models.ImageField(upload_to='video_thumbnails/', blank=True, null=True)
-#     order = models.IntegerField(default=0)
-#     is_free = models.BooleanField(default=False)
-#     tools_needed = models.ManyToManyField(
-#         Tool, 
-#         blank=True, 
-#         related_name='videos',
-#         help_text="Specific tools needed for this video"
-#     )
-
-#     def __str__(self):
-#         return f"{self.curriculum_day} - {self.title}"
-
-#     # -----------------------------
-#     # Video URL helpers
-#     # -----------------------------
-#     def get_youtube_id(self):
-#         """Extract YouTube video ID from URL"""
-#         if not self.video_url:
-#             return None
-        
-#         import re
-#         from urllib.parse import urlsplit, parse_qs
-
-#         url = str(self.video_url).strip()
-#         patterns = [
-#             r'(?:https?:\/\/)?(?:www\.)?youtube\.com\/watch\?v=([\w\-]{11})',
-#             r'(?:https?:\/\/)?(?:www\.)?youtu\.be\/([\w\-]{11})',
-#             r'(?:https?:\/\/)?(?:www\.)?youtube\.com\/embed\/([\w\-]{11})',
-#             r'(?:https?:\/\/)?(?:www\.)?youtube\.com\/v\/([\w\-]{11})',
-#             r'(?:https?:\/\/)?(?:www\.)?youtube\.com\/shorts\/([\w\-]{11})',
-#         ]
-        
-#         for pattern in patterns:
-#             match = re.search(pattern, url, re.IGNORECASE)
-#             if match:
-#                 video_id = match.group(1)
-#                 if len(video_id) == 11 and re.match(r'^[\w\-]+$', video_id):
-#                     return video_id
-        
-#         # Fallback parsing
-#         try:
-#             parsed = urlsplit(url)
-#             if parsed.netloc in ['youtu.be', 'www.youtu.be']:
-#                 video_id = parsed.path.strip('/').split('?')[0]
-#                 if len(video_id) == 11:
-#                     return video_id
-#             if 'youtube.com' in parsed.netloc:
-#                 if parsed.path.startswith('/watch'):
-#                     query_params = parse_qs(parsed.query)
-#                     if 'v' in query_params:
-#                         video_id = query_params['v'][0]
-#                         if len(video_id) == 11:
-#                             return video_id
-#                 elif parsed.path.startswith(('/embed/', '/v/', '/shorts/')):
-#                     video_id = parsed.path.split('/')[2]
-#                     if len(video_id) == 11:
-#                         return video_id
-#         except Exception:
-#             pass
-        
-#         return None
-
-#     def get_vimeo_id(self):
-#         """Extract Vimeo video ID from URL"""
-#         if not self.video_url:
-#             return None
-        
-#         import re
-#         match = re.search(r'vimeo\.com\/(\d+)', self.video_url)
-#         if match:
-#             return match.group(1)
-#         return None
-
-#     def get_embed_url(self):
-#         """Get embed URL for the video"""
-#         youtube_id = self.get_youtube_id()
-#         if youtube_id:
-#             return f"https://www.youtube.com/embed/{youtube_id}"
-        
-#         vimeo_id = self.get_vimeo_id()
-#         if vimeo_id:
-#             return f"https://player.vimeo.com/video/{vimeo_id}"
-        
-#         return self.video_url
-
-#     # -----------------------------
-#     # Access control
-#     # -----------------------------
-#     def is_accessible_by(self, user):
-#         from .models import Purchase
-#         """
-#         Access rules:
-#         - Day 1 videos are free for everyone
-#         - Day 2+ videos require purchase
-#         - Free videos are always accessible
-#         """
-#         # Free video or free curriculum day
-#         if self.is_free or self.curriculum_day.is_free:
-#             return True
-
-#         # Day 1 is free for all users
-#         if self.curriculum_day.day_number == 1:
-#             return True
-
-#         # Day 2+ requires purchase
-#         if user.is_authenticated:
-#             return Purchase.objects.filter(
-#                 user=user,
-#                 course=self.curriculum_day.course,
-#                 payment_status='completed'
-#             ).exists()
-
-#         # Not logged in and Day 2+
-#         return False
-   
-#     @property
-#     def youtube_id(self):
-#         """Property to access YouTube ID easily in templates"""
-#         return self.get_youtube_id()
-    
-#     @property 
-#     def vimeo_id(self):
-#         """Property to access Vimeo ID easily in templates"""
-#         return self.get_vimeo_id()
-    
-#     @property
-#     def is_youtube_video(self):
-#         """Check if this is a YouTube video"""
-#         return bool(self.get_youtube_id())
-    
-#     @property
-#     def is_vimeo_video(self):
-#         """Check if this is a Vimeo video"""
-#         return bool(self.get_vimeo_id())
-    
-#     @property
-#     def embed_url(self):
-#         """Get embed URL property"""
-#         return self.get_embed_url()
-
-#     class Meta:
-#         verbose_name = "Video"
-#         verbose_name_plural = "Videos"
-#         ordering = ['order', 'id']
 
 
 
