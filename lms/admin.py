@@ -783,7 +783,24 @@ class VideoInline(admin.TabularInline):
         'is_free',
     ]
     readonly_fields = ['duration_display_inline']
-    
+
+    def save_model(self, request, obj, form, change):
+        # Force duration extraction when video_file changes
+        if obj.video_file:
+            old_file = None
+            if obj.pk:
+                try:
+                    old = Video.objects.get(pk=obj.pk)
+                    old_file = str(old.video_file)
+                except Video.DoesNotExist:
+                    pass
+
+            # If video changed or duration is missing, reset duration
+            if str(obj.video_file) != old_file or not obj.duration:
+                obj.duration = None  # Force re-extraction in save()
+
+        obj.save()
+
     def duration_display_inline(self, obj):
         if obj.duration:
             return obj.duration_display

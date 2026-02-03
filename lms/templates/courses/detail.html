@@ -1154,7 +1154,7 @@
     </div>
 
     <div class="video-meta">
-        <span class="video-duration">{{ video.duration }}</span>
+        <span class="video-duration">{{ video.duration_display }}</span>
 
         {% if video.is_accessible %}
             <button class="video-action" onclick="playVideo({{ video.id }})" aria-label="Play video">
