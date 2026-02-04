@@ -2,23 +2,48 @@ from django.db import migrations, models
 
 
 class Migration(migrations.Migration):
-
     dependencies = [
         ('lms', '0004_create_tool'),
     ]
-
+    
     operations = [
-        migrations.CreateModel(
-            name='CurriculumDay_tools',
-            fields=[
-                ('id', models.BigAutoField(auto_created=True, primary_key=True, serialize=False, verbose_name='ID')),
-                ('curriculumday', models.ForeignKey(on_delete=models.CASCADE, to='lms.curriculumday')),
-                ('tool', models.ForeignKey(on_delete=models.CASCADE, to='lms.tool')),
+        migrations.RunSQL(
+            sql="""
+                CREATE TABLE IF NOT EXISTS "lms_curriculumday_tools" (
+                    "id" integer NOT NULL PRIMARY KEY AUTOINCREMENT,
+                    "curriculumday_id" bigint NOT NULL REFERENCES "lms_curriculumday" ("id") DEFERRABLE INITIALLY DEFERRED,
+                    "tool_id" bigint NOT NULL REFERENCES "lms_tool" ("id") DEFERRABLE INITIALLY DEFERRED
+                )
+            """,
+            reverse_sql="DROP TABLE IF EXISTS lms_curriculumday_tools",
+            state_operations=[
+                migrations.AddField(
+                    model_name='curriculumday',
+                    name='tools',
+                    field=models.ManyToManyField(blank=True, related_name='curriculum_days', to='lms.tool'),
+                ),
             ],
-            options={
-                'db_table': 'lms_curriculumday_tools',
-                'managed': True,
-            },
+        ),
+        # Create indexes for the many-to-many table
+        migrations.RunSQL(
+            sql="""
+                CREATE INDEX IF NOT EXISTS "lms_curriculumday_tools_curriculumday_id" 
+                ON "lms_curriculumday_tools" ("curriculumday_id")
+            """,
+            reverse_sql="DROP INDEX IF EXISTS lms_curriculumday_tools_curriculumday_id",
+        ),
+        migrations.RunSQL(
+            sql="""
+                CREATE INDEX IF NOT EXISTS "lms_curriculumday_tools_tool_id" 
+                ON "lms_curriculumday_tools" ("tool_id")
+            """,
+            reverse_sql="DROP INDEX IF EXISTS lms_curriculumday_tools_tool_id",
+        ),
+        migrations.RunSQL(
+            sql="""
+                CREATE UNIQUE INDEX IF NOT EXISTS "lms_curriculumday_tools_curriculumday_id_tool_id" 
+                ON "lms_curriculumday_tools" ("curriculumday_id", "tool_id")
+            """,
+            reverse_sql="DROP INDEX IF EXISTS lms_curriculumday_tools_curriculumday_id_tool_id",
         ),
     ]
-
