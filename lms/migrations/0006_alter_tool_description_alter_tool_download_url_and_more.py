@@ -45,7 +45,7 @@ class Migration(migrations.Migration):
             name='order',
             field=models.IntegerField(default=0, help_text='Display order'),
         ),
-        migrations.DeleteModel(
-            name='CurriculumDay_tools',
-        ),
+        # migrations.DeleteModel(
+        #     name='CurriculumDay_tools',
+        # ),
     ]
