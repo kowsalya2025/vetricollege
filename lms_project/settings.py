@@ -4,6 +4,8 @@ from dotenv import load_dotenv
 import cloudinary
 import cloudinary.uploader
 import cloudinary.api
+import dj_database_url
+
 
 
 # Build paths inside the project like this: BASE_DIR / 'subdir'.
@@ -124,10 +126,11 @@ WSGI_APPLICATION = 'lms_project.wsgi.application'
 #     }
 
 DATABASES = {
-    "default": {
-        "ENGINE": "django.db.backends.sqlite3",
-        "NAME": os.path.join('/opt/render/project/data', 'db.sqlite3'),
-    }
+    'default': dj_database_url.config(
+        default='sqlite:///' + str(BASE_DIR / 'db.sqlite3'),  # Fallback to SQLite
+        conn_max_age=600,
+        conn_health_checks=True,
+    )
 }
 
 
