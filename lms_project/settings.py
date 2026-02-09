@@ -184,7 +184,7 @@ STATIC_URL = '/static/'
 # ]
 STATIC_ROOT = BASE_DIR / 'staticfiles'
 # STATICFILES_STORAGE = "whitenoise.storage.CompressedManifestStaticFilesStorage"  # Comment out old line
-STATICFILES_STORAGE = "django.contrib.staticfiles.storage.ManifestStaticFilesStorage"
+STATICFILES_STORAGE = None
 
 # Media files (User uploaded content)
 MEDIA_URL = '/media/'
@@ -293,13 +293,6 @@ else:
     SESSION_COOKIE_SECURE = False
     CSRF_COOKIE_SECURE = False
 
-# Custom storage to handle CKEditor missing files
-from django.contrib.staticfiles.storage import ManifestStaticFilesStorage
-
-class ForgivingManifestStaticFilesStorage(ManifestStaticFilesStorage):
-    manifest_strict = False
-
-STATICFILES_STORAGE = "lms_project.settings.ForgivingManifestStaticFilesStorage"
 
 
 
