@@ -58,11 +58,11 @@ INSTALLED_APPS = [
     'django.contrib.contenttypes',
     'django.contrib.sessions',
     'django.contrib.messages',
-    'cloudinary_storage',
+    'cloudinary_storage', 
     'django.contrib.staticfiles',
     'django.contrib.sites', 
      'cloudinary',
-     # Required for allauth
+    # Required for allauth
 
     # Third party apps
     'allauth',
@@ -183,15 +183,10 @@ STATIC_URL = '/static/'
 #     BASE_DIR / 'static',  # Add this if you have a static folder
 # ]
 STATIC_ROOT = BASE_DIR / 'staticfiles'
-# STATICFILES_STORAGE = "whitenoise.storage.CompressedManifestStaticFilesStorage"  # Comment out old line
-STORAGES = {
-    "default": {
-        "BACKEND": "django.core.files.storage.FileSystemStorage",
-    },
-    "staticfiles": {
-        "BACKEND": "whitenoise.storage.CompressedManifestStaticFilesStorage",
-    },
-}
+
+STATICFILES_STORAGE = "whitenoise.storage.CompressedManifestStaticFilesStorage"
+
+
 
 # Media files (User uploaded content)
 MEDIA_URL = '/media/'
