@@ -22,10 +22,10 @@ from django.conf.urls.static import static
 urlpatterns = [
     path('admin/', admin.site.urls),
     path('accounts/', include('allauth.urls')),
-
-    # CKEditor uploader URLs
-    path('ckeditor/', include('ckeditor_uploader.urls')),
-
+    
+    # Remove this line - you're using Cloudinary, not ckeditor_uploader
+    # path('ckeditor/', include('ckeditor_uploader.urls')),
+    
     # LMS app URLs
     path('', include('lms.urls')),
 ]
