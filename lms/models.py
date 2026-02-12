@@ -598,12 +598,8 @@ class Video(models.Model):
     # AUTO-GENERATED FIELDS
     # ----------------------------------
 
-    duration = models.DurationField(
-        blank=True,
-        null=True,
-        editable=False,
-        help_text="Automatically calculated video duration"
-    )
+    duration = models.IntegerField(default=0)
+
 
     thumbnail = CloudinaryField(
     'image',
