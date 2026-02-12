@@ -599,7 +599,11 @@ class Video(models.Model):
     # AUTO-GENERATED FIELDS
     # ----------------------------------
 
-    duration = models.DurationField(default=timedelta(0))
+    duration = models.DurationField(
+        default=timedelta(0),
+        blank=True,
+        null=True
+    )
 
 
     thumbnail = CloudinaryField(
