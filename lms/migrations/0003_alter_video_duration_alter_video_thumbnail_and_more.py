@@ -10,10 +10,9 @@ class Migration(migrations.Migration):
     ]
 
     operations = [
-        migrations.AlterField(
-            model_name='video',
-            name='duration',
-            field=models.DurationField(blank=True, editable=False, help_text='Automatically calculated video duration', null=True),
+        migrations.RunSQL(
+            sql="ALTER TABLE lms_video ALTER COLUMN duration TYPE interval USING (duration * interval '1 second')",
+            reverse_sql="ALTER TABLE lms_video ALTER COLUMN duration TYPE integer USING EXTRACT(EPOCH FROM duration)::integer",
         ),
         migrations.AlterField(
             model_name='video',
