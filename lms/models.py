@@ -7,6 +7,7 @@ from ckeditor.fields import RichTextField
 from cloudinary.models import CloudinaryField
 from django.utils import timezone
 import uuid
+from datetime import timedelta
 
 from urllib3 import request
 
