@@ -14,8 +14,8 @@ db_private.sqlite3
 
 
 # Media & static
-/media
-/staticfiles
+# /media
+# /staticfiles
 
 # Python
 __pycache__/
