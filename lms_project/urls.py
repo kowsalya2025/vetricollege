@@ -11,12 +11,5 @@ urlpatterns = [
     path('', include('lms.urls')),
 ]
 
-# 🔴 CRITICAL FIX: Serve media files on Render
-if not settings.DEBUG:
-    urlpatterns += [
-        re_path(r'^media/(?P<path>.*)$', serve, {
-            'document_root': settings.MEDIA_ROOT
-        }),
-    ]
-else:
+if settings.DEBUG:
     urlpatterns += static(settings.MEDIA_URL, document_root=settings.MEDIA_ROOT)
