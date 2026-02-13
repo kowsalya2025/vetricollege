@@ -63,7 +63,7 @@ class HeroSection(models.Model):
     title_secondary = models.CharField(max_length=200)
     subtitle = models.CharField(max_length=200, blank=True)
     button_text = models.CharField(max_length=50, default="Enroll Now")
-    hero_image = models.ImageField(upload_to='hero/', blank=True)
+    hero_image = CloudinaryField('image', blank=True, null=True, folder='hero')
     background_color = models.CharField(max_length=7, default="#1abc9c")
     is_active = models.BooleanField(default=True)
     created_at = models.DateTimeField(auto_now_add=True)
@@ -110,7 +110,7 @@ class HomeAboutSection(models.Model):
     description = RichTextField(blank=True, null=True)
     button_text = models.CharField(max_length=100, default="Browse All Courses")
     button_link = models.CharField(max_length=200, default="/courses/")
-    image = models.ImageField(upload_to='home/about/', null=True, blank=True, verbose_name="About Section Image")
+    image = CloudinaryField('image', blank=True, null=True, folder='home/about')
     
     # Team section fields
     team_title = models.CharField(max_length=200, default="Our Team")
@@ -135,7 +135,7 @@ class HomeAboutSection(models.Model):
 # ============================
 class Category(models.Model):
     name = models.CharField(max_length=100)
-    icon = models.ImageField(upload_to='categories/')
+    icon = CloudinaryField('image', blank=True, null=True, folder='categories')
     order = models.IntegerField(default=0)
     is_active = models.BooleanField(default=True)
 
@@ -174,7 +174,7 @@ class Instructor(models.Model):
     """Model for course instructors"""
     name = models.CharField(max_length=100)
     designation = models.CharField(max_length=150)  # NEW FIELD
-    profile_image = models.ImageField(upload_to='instructors/', blank=True, null=True)
+    profile_image = CloudinaryField('image', blank=True, null=True, folder='instructors')
     bio = models.TextField(blank=True)
 
     def __str__(self):
@@ -200,12 +200,7 @@ class Tool(models.Model):
         blank=True, 
         help_text="Font Awesome class, e.g., 'fab fa-figma'"
     )
-    icon_image = models.ImageField(
-        upload_to='tool_icons/', 
-        blank=True, 
-        null=True,
-        help_text="Custom icon image"
-    )
+    icon_image = CloudinaryField('image', blank=True, null=True, folder='tool_icons')
     
     # Download/Info links
     download_url = models.URLField(
@@ -365,11 +360,7 @@ class Course(models.Model):
     # =========================
     # MEDIA
     # =========================
-    thumbnail = models.ImageField(
-        upload_to='courses/thumbnails/',
-        blank=True,
-        null=True
-    )
+    thumbnail = CloudinaryField('image', blank=True, null=True, folder='courses/thumbnails')
 
     preview_video_url = models.URLField(blank=True)
 
@@ -1040,12 +1031,7 @@ class CourseReview(models.Model):
         validators=[MinValueValidator(1), MaxValueValidator(5)]
     )
     review = models.TextField()
-    photo = models.ImageField(
-        upload_to='reviews/', 
-        null=True, 
-        blank=True,
-        help_text="Optional profile photo"
-    )
+    photo = CloudinaryField('image', blank=True, null=True, folder='reviews')
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
 
@@ -1152,7 +1138,7 @@ class HomeBanner(models.Model):
     subtitle = models.CharField(max_length=200, default="Start learning by registering for free")
     button_text = models.CharField(max_length=50, default="Sign up for Free")
     button_url = models.CharField(max_length=200, help_text="Enter a relative URL like /signup/")
-    image = models.ImageField(upload_to='home_banner/')
+    image = CloudinaryField('image', blank=True, null=True, folder='home_banner')
     is_active = models.BooleanField(default=True)
     order = models.PositiveIntegerField(default=1, help_text="Order of display if multiple banners exist")
 
@@ -1171,7 +1157,7 @@ class Testimonial(models.Model):
     name = models.CharField(max_length=100)
     role = models.CharField(max_length=150)
     message = models.TextField()
-    profile_image = models.ImageField(upload_to='testimonials/', blank=True, null=True)
+    profile_image = CloudinaryField('image', blank=True, null=True, folder='testimonials')
     is_active = models.BooleanField(default=True)
     created_at = models.DateTimeField(auto_now_add=True)
 
