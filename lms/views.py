@@ -2086,3 +2086,33 @@ def download_brochure(request, slug):
     response.write(pdf)
     
     return response
+
+
+from django.http import HttpResponse
+import re
+
+def fix_images(request):
+    from lms.models import HeroSection, HomeAboutSection, Instructor, Course, HomeBanner, Testimonial
+    
+    results = []
+    
+    def fix_cloudinary_field(model, field_name):
+        for obj in model.objects.all():
+            val = str(getattr(obj, field_name))
+            if not val or val == 'None':
+                continue
+            if 'res.cloudinary.com' in val:
+                clean = re.sub(r'https://res\.cloudinary\.com/[^/]+/image/upload/(v\d+/)?', '', val)
+                clean = re.sub(r'\.(jpg|jpeg|png|gif|webp)$', '', clean, flags=re.IGNORECASE)
+                setattr(obj, field_name, clean)
+                obj.save()
+                results.append(f"{model.__name__} id={obj.id}: fixed -> {clean}")
+    
+    fix_cloudinary_field(HeroSection, 'hero_image')
+    fix_cloudinary_field(HomeAboutSection, 'image')
+    fix_cloudinary_field(Instructor, 'profile_image')
+    fix_cloudinary_field(Course, 'thumbnail')
+    fix_cloudinary_field(HomeBanner, 'image')
+    fix_cloudinary_field(Testimonial, 'profile_image')
+    
+    return HttpResponse("<br>".join(results) if results else "Already fixed or nothing to fix!")

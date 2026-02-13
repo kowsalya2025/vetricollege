@@ -325,7 +325,7 @@
 
                 <div onclick="window.location.href='{% url 'course_detail' item.course.slug %}'" style="cursor: pointer;">
                     {% if item.course.thumbnail %}
-                    <img src="{{ item.course.thumbnail }}" alt="{{ item.course.title }}" class="course-image">
+                    <img src="{{ item.course.thumbnail.url }}" alt="{{ item.course.title }}" class="course-image">
                     {% else %}
                     <div class="course-image" style="background: linear-gradient(135deg, 
                         {% if forloop.counter0|divisibleby:5 %}#667eea{% elif forloop.counter0|divisibleby:4 %}#f093fb{% elif forloop.counter0|divisibleby:3 %}#4facfe{% elif forloop.counter0|divisibleby:2 %}#43e97b{% else %}#fa709a{% endif %} 0%, 

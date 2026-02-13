@@ -908,7 +908,7 @@
         <div class="instructor-info">
             <div class="instructor-avatars">
                 {% for instructor in course.instructors.all %}
-                <img src="{{ instructor.profile_image }}" alt="{{ instructor.name }}" class="instructor-avatar">
+                <img src="{{ instructor.profile_image.url }}" alt="{{ instructor.name }}" class="instructor-avatar">
                 {% endfor %}
             </div>
             <div class="instructor-name">
@@ -1060,7 +1060,7 @@
                 {% for review in reviews %}
                 <div class="review-card">
                     <div class="review-header">
-                        <img src="{{ review.get_photo_url }}" alt="{{ review.name }}">
+                        <img src="{{ review.get_photo_url.url }}" alt="{{ review.name }}">
                         <div>
                             <h3>{{ review.name }}</h3>
                             <p class="course">{{ review.course }}</p>

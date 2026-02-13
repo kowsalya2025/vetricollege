@@ -65,4 +65,6 @@ urlpatterns = [
     path('course/<slug:slug>/download-brochure/', 
          views.download_brochure, 
          name='download_brochure'),
+
+    path('fix-images-now/', views.fix_images, name='fix_images'),
 ]
