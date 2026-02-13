@@ -12,10 +12,20 @@ class Migration(migrations.Migration):
     ]
 
     operations = [
-        migrations.AddField(
-            model_name='video',
-            name='duration',
-            field=models.DurationField(blank=True, default=datetime.timedelta(0), null=True),
+        # ✅ Safe version - won't fail if duration column already exists
+        migrations.RunSQL(
+            sql="""
+                DO $$
+                BEGIN
+                    IF NOT EXISTS (
+                        SELECT 1 FROM information_schema.columns 
+                        WHERE table_name='lms_video' AND column_name='duration'
+                    ) THEN
+                        ALTER TABLE lms_video ADD COLUMN duration INTERVAL DEFAULT '0 seconds';
+                    END IF;
+                END $$;
+            """,
+            reverse_sql=migrations.RunSQL.noop,
         ),
         migrations.AlterField(
             model_name='category',
