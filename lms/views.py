@@ -1870,11 +1870,7 @@ def certificate_detail(request, certificate_id):
     return render(request, 'lms/certificate_detail.html', context)
 
 
-# REMOVE these imports (no longer needed)
-from playwright.sync_api import sync_playwright
-from pathlib import Path
-import tempfile
-import os
+
 
 # KEEP these imports
 from django.http import HttpResponse
@@ -1904,7 +1900,7 @@ def download_certificate(request, certificate_id):
             base_url=request.build_absolute_uri('/')
         ).write_pdf()
 
-        student_name = certificate.user.get_full_name() or certificate.user.email
+        student_name = certificate.user.get_full_name() or certificate.user.user
         safe_name = "".join(
             c if c.isalnum() or c == '_' else '_'
             for c in student_name.replace(' ', '_')
