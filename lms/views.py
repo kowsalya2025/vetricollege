@@ -1864,18 +1864,8 @@ def certificate_detail(request, certificate_id):
         user=request.user
     )
     
-    # Generate certificate image dynamically
-    try:
-        certificate.generated_image = cert_image_path
-        certificate.save()
-    except Exception as e:
-        # Log error but continue - will show template without generated image
-        print(f"Error generating certificate: {e}")
-        cert_image_path = None
-    
     context = {
         'certificate': certificate,
-        'cert_image_path': cert_image_path,
     }
     return render(request, 'lms/certificate_detail.html', context)
 

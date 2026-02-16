@@ -56,6 +56,7 @@ urlpatterns = [
     # path('certificate/download/<int:pk>/', views.download_certificate, name='download_certificate'),
     path('stripe/webhook/', views.stripe_webhook, name='stripe_webhook'),
     path('certificate/download/<str:certificate_id>/', views.download_certificate, name='download_certificate'),
+  
 
     # Placeholder pages 
     path('contact/', views.placeholder_view, {'page_name': 'contact'}, name='contact'), 
