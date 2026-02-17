@@ -1900,7 +1900,8 @@ def download_certificate(request, certificate_id):
             base_url=request.build_absolute_uri('/')
         ).write_pdf()
 
-        student_name = certificate.user.get_full_name() or certificate.user.user
+        # ✅ Fix
+        student_name = certificate.user.get_full_name() or certificate.user.username
         safe_name = "".join(
             c if c.isalnum() or c == '_' else '_'
             for c in student_name.replace(' ', '_')
