@@ -1908,7 +1908,7 @@ def download_certificate(request, certificate_id):
         )
 
         response = HttpResponse(pdf_bytes, content_type='application/pdf')
-        response['Content-Disposition'] = f'attachment; filename="{safe_name}_Certificate.pdf"'
+        response['Content-Disposition'] = f'inline; filename="{safe_name}_Certificate.pdf"'
         return response
 
     except Exception as e:
