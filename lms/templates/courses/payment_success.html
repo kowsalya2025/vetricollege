@@ -15,11 +15,11 @@
             {% if payment %}
             <div class="course-details">
                 <h2>{{ course.title }}</h2>
-                <p><strong>Instructor:</strong> 
+                <!-- <p><strong>Instructor:</strong> 
                     {% with course.instructors.all|first as instructor %}
                         {{ instructor.name|default:"Expert Instructor" }}
                     {% endwith %}
-                </p>
+                </p> -->
                 <p><strong>Amount Paid:</strong> ₹{{ payment.amount|floatformat:2 }}</p>
                 <p><strong>Payment ID:</strong> {{ payment.stripe_payment_id|default:payment.id }}</p>
                 <p><strong>Payment Method:</strong> Stripe Card</p>
